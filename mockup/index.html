@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ShuttleClass – Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary:  { 50:'#fff1f2', 100:'#ffe4e6', 200:'#fecdd3', 500:'#ef4444', 600:'#dc2626', 700:'#b91c1c', 800:'#991b1b' },
+          court:    { 50:'#f0fdf4', 100:'#dcfce7', 500:'#22c55e', 600:'#16a34a', 700:'#15803d' },
+          sidebar:  '#180a0a'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  *{box-sizing:border-box}
+  .screen{display:none}
+  .screen.active{display:flex}
+  .nav-item{transition:background .15s;cursor:pointer}
+  .nav-item:hover{background:rgba(255,255,255,0.07)}
+  .nav-item.active{background:rgba(220,38,38,0.22);border-left:3px solid #dc2626}
+  .card-hover:hover{box-shadow:0 4px 20px rgba(0,0,0,0.09);transform:translateY(-1px);transition:all .2s}
+  .skill-bar{height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden}
+  .skill-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#ef4444,#b91c1c)}
+  .court-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#22c55e,#15803d)}
+  .tab{cursor:pointer;padding:6px 13px;border-radius:8px;font-size:13px;transition:background .15s}
+  .tab.active{background:#dc2626;color:#fff}
+  .tab:not(.active):hover{background:#f5f5f5}
+  .badge-green{background:#dcfce7;color:#15803d}
+  .badge-red{background:#fee2e2;color:#b91c1c}
+  .badge-yellow{background:#fef9c3;color:#a16207}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+  .badge-gray{background:#f1f5f9;color:#64748b}
+</style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<!-- NAV BAR -->
+<div class="fixed top-0 left-0 right-0 z-50 bg-white border-b px-3 py-2 flex items-center gap-1.5 shadow-sm flex-wrap">
+  <span class="text-xs font-semibold text-gray-400 mr-1">Màn hình:</span>
+  <button onclick="show('login')" class="tab active" id="tab-login">Login</button>
+  <button onclick="show('admin-dashboard')" class="tab" id="tab-admin-dashboard">Admin Dashboard</button>
+  <button onclick="show('admin-classes')" class="tab" id="tab-admin-classes">Quản lý lớp</button>
+  <button onclick="show('admin-packages')" class="tab" id="tab-admin-packages">Gói học / Thẻ</button>
+  <button onclick="show('coach-dashboard')" class="tab" id="tab-coach-dashboard">HLV Dashboard</button>
+  <button onclick="show('coach-attendance')" class="tab" id="tab-coach-attendance">Điểm danh</button>
+  <button onclick="show('student-dashboard')" class="tab" id="tab-student-dashboard">HV Dashboard</button>
+  <button onclick="show('student-packages')" class="tab" id="tab-student-packages">Thẻ tập</button>
+</div>
+
+<div style="padding-top:48px">
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div id="screen-login" class="screen active min-h-screen items-center justify-center" style="background:linear-gradient(135deg,#180a0a 0%,#3b0f0f 50%,#1a2e0a 100%)">
+  <!-- Shuttlecock decorative blobs -->
+  <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(220,38,38,0.08);top:-80px;right:-80px;pointer-events:none"></div>
+  <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(22,163,74,0.07);bottom:-60px;left:-60px;pointer-events:none"></div>
+
+  <div class="w-full max-w-md px-4 relative z-10">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-xl" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+        <!-- Shuttlecock SVG -->
+        <svg class="w-9 h-9 text-white" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="12" r="5" fill="white" opacity="0.9"/>
+          <line x1="20" y1="17" x2="14" y2="34" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <line x1="20" y1="17" x2="20" y2="36" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <line x1="20" y1="17" x2="26" y2="34" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="34" x2="26" y2="34" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-white">ShuttleClass</h1>
+      <p class="text-red-300 mt-1 text-sm">Quản lý lớp học cầu lông chuyên nghiệp</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <h2 class="text-xl font-semibold text-gray-800 mb-6">Đăng nhập</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" value="admin@shuttleclass.vn" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+          <input type="password" value="••••••••" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+        </div>
+        <button onclick="show('admin-dashboard')" class="w-full text-white font-semibold py-2.5 rounded-xl transition-colors" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+          Đăng nhập
+        </button>
+      </div>
+      <div class="mt-5 pt-4 border-t border-gray-100">
+        <p class="text-xs text-center text-gray-400 mb-3">Đăng nhập nhanh:</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="show('admin-dashboard')" class="text-xs py-2 rounded-lg border font-medium transition-colors" style="background:#fff1f2;color:#b91c1c;border-color:#fecdd3">Admin</button>
+          <button onclick="show('coach-dashboard')" class="text-xs py-2 rounded-lg border font-medium transition-colors" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0">HLV</button>
+          <button onclick="show('student-dashboard')" class="text-xs py-2 rounded-lg border font-medium transition-colors bg-gray-50 text-gray-700 border-gray-200">Học viên</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Court line decoration -->
+    <div class="mt-6 flex items-center gap-2 opacity-30">
+      <div class="flex-1 h-px bg-court-500"></div>
+      <div class="w-2 h-2 rounded-full bg-court-500"></div>
+      <div class="w-16 h-px bg-white"></div>
+      <div class="w-2 h-2 rounded-full bg-white"></div>
+      <div class="w-16 h-px bg-white"></div>
+      <div class="w-2 h-2 rounded-full bg-court-500"></div>
+      <div class="flex-1 h-px bg-court-500"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADMIN DASHBOARD ═══════════════════ -->
+<div id="screen-admin-dashboard" class="screen min-h-screen">
+  <!-- Sidebar -->
+  <div class="w-60 min-h-screen flex-shrink-0 flex flex-col" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="12" r="4" fill="white"/>
+            <line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="text-white font-bold">ShuttleClass</span>
+      </div>
+      <div class="mt-3 flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-white font-bold" style="background:#dc2626">A</div>
+        <div><p class="text-white text-xs font-medium">Nguyễn Admin</p><p class="text-red-400 text-xs">Quản trị viên</p></div>
+      </div>
+    </div>
+    <nav class="p-3 space-y-0.5 flex-1">
+      <p class="text-red-900 text-xs font-semibold uppercase px-3 pt-3 pb-1.5 tracking-wider">Tổng quan</p>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+        Dashboard
+      </a>
+      <p class="text-red-900 text-xs font-semibold uppercase px-3 pt-4 pb-1.5 tracking-wider">Quản lý</p>
+      <a onclick="show('admin-classes')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Lớp học
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Học viên / HLV
+      </a>
+      <a onclick="show('admin-packages')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+        Gói học / Thẻ
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        Cơ sở / Sân
+      </a>
+      <p class="text-red-900 text-xs font-semibold uppercase px-3 pt-4 pb-1.5 tracking-wider">Báo cáo</p>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Doanh thu
+      </a>
+    </nav>
+    <!-- Court line bottom decoration -->
+    <div class="p-4 border-t border-white/5">
+      <div class="flex gap-1 opacity-20">
+        <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+        <div class="w-4 h-0.5 rounded bg-white"></div>
+        <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-semibold text-gray-900">Dashboard</h1>
+        <p class="text-xs text-gray-500">Tổng quan hoạt động – Tháng 5/2026</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:#dc2626"></span>
+        </button>
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:#dc2626">A</div>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-5">
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Tổng học viên</span>
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#fff1f2">
+              <svg class="w-5 h-5" style="color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">148</p>
+          <p class="text-xs mt-1" style="color:#16a34a">↑ +12 so với tháng trước</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Lớp hoạt động</span>
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#f0fdf4">
+              <svg class="w-5 h-5" style="color:#16a34a" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </div>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">14</p>
+          <p class="text-xs mt-1" style="color:#16a34a">↑ +2 lớp mới tháng này</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Doanh thu tháng</span>
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#fff1f2">
+              <svg class="w-5 h-5" style="color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">32.4M</p>
+          <p class="text-xs mt-1" style="color:#16a34a">↑ +8.2% so với T4</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Buổi học hôm nay</span>
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#fff1f2">
+              <svg class="w-5 h-5" style="color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">7</p>
+          <p class="text-xs text-gray-500 mt-1">Sáng: 4 · Chiều: 3</p>
+        </div>
+      </div>
+
+      <!-- Chart + Expiring cards -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800">Doanh thu 6 tháng gần nhất</h3>
+            <span class="text-xs px-2 py-1 rounded-full" style="background:#fff1f2;color:#b91c1c">2026</span>
+          </div>
+          <svg viewBox="0 0 500 160" class="w-full">
+            <defs>
+              <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#dc2626" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#dc2626" stop-opacity="0.15"/>
+              </linearGradient>
+              <linearGradient id="rg2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#16a34a" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#16a34a" stop-opacity="0.15"/>
+              </linearGradient>
+            </defs>
+            <line x1="40" y1="10" x2="480" y2="10" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="42" x2="480" y2="42" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="74" x2="480" y2="74" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="106" x2="480" y2="106" stroke="#f1f5f9" stroke-width="1"/>
+            <line x1="40" y1="138" x2="480" y2="138" stroke="#e5e7eb" stroke-width="1"/>
+            <text x="2" y="14" fill="#94a3b8" font-size="9">40M</text>
+            <text x="2" y="46" fill="#94a3b8" font-size="9">30M</text>
+            <text x="2" y="78" fill="#94a3b8" font-size="9">20M</text>
+            <text x="2" y="110" fill="#94a3b8" font-size="9">10M</text>
+            <rect x="55"  y="52" width="42" height="86" fill="url(#rg)" rx="5"/>
+            <rect x="130" y="44" width="42" height="94" fill="url(#rg)" rx="5"/>
+            <rect x="205" y="32" width="42" height="106" fill="url(#rg)" rx="5"/>
+            <rect x="280" y="60" width="42" height="78" fill="url(#rg)" rx="5"/>
+            <rect x="355" y="24" width="42" height="114" fill="url(#rg)" rx="5"/>
+            <rect x="430" y="14" width="42" height="124" fill="url(#rg2)" rx="5"/>
+            <text x="70"  y="152" fill="#94a3b8" font-size="10" text-anchor="middle">T12</text>
+            <text x="145" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">T1</text>
+            <text x="220" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">T2</text>
+            <text x="295" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">T3</text>
+            <text x="370" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">T4</text>
+            <text x="445" y="152" fill="#15803d" font-size="10" text-anchor="middle" font-weight="bold">T5</text>
+          </svg>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 class="font-semibold text-gray-800 mb-3">Thẻ sắp hết hạn</h3>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#fff1f2">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fecdd3;color:#b91c1c">NT</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">Nguyễn Thảo</p>
+                <p class="text-xs" style="color:#dc2626">Còn 2 buổi · 3 ngày</p>
+              </div>
+              <span class="text-xs px-1.5 py-0.5 rounded-full badge-red font-medium">Khẩn</span>
+            </div>
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-yellow-50">
+              <div class="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-xs font-bold text-yellow-700">LM</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">Lê Minh</p>
+                <p class="text-xs text-yellow-600">Còn 3 buổi · 7 ngày</p>
+              </div>
+              <span class="text-xs px-1.5 py-0.5 rounded-full badge-yellow">Sắp hết</span>
+            </div>
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-yellow-50">
+              <div class="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-xs font-bold text-yellow-700">PH</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">Phạm Hoa</p>
+                <p class="text-xs text-yellow-600">Còn 3 buổi · 10 ngày</p>
+              </div>
+              <span class="text-xs px-1.5 py-0.5 rounded-full badge-yellow">Sắp hết</span>
+            </div>
+            <div class="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100">
+              <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">TV</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">Trần Văn</p>
+                <p class="text-xs text-gray-500">Còn 5 buổi · 14 ngày</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today sessions table -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-800">Buổi học hôm nay – 24/05/2026</h3>
+          <button class="text-xs hover:underline" style="color:#dc2626">Xem tất cả</button>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-gray-500 border-b border-gray-100">
+            <th class="text-left pb-2 font-medium">Lớp</th><th class="text-left pb-2 font-medium">HLV</th>
+            <th class="text-left pb-2 font-medium">Sân</th><th class="text-left pb-2 font-medium">Giờ</th>
+            <th class="text-left pb-2 font-medium">Học viên</th><th class="text-left pb-2 font-medium">Trạng thái</th>
+          </tr></thead>
+          <tbody class="divide-y divide-gray-50">
+            <tr class="hover:bg-gray-50"><td class="py-3 font-medium text-gray-800">Lớp Cơ bản A</td><td class="py-3 text-gray-600">Trần Hùng</td><td class="py-3 text-gray-600">Sân 1</td><td class="py-3 text-gray-600">07:00–08:30</td><td class="py-3 text-gray-600">12/15</td><td class="py-3"><span class="badge-green text-xs px-2 py-1 rounded-full font-medium">Hoàn thành</span></td></tr>
+            <tr class="hover:bg-gray-50"><td class="py-3 font-medium text-gray-800">Lớp Nâng cao B</td><td class="py-3 text-gray-600">Lê Quân</td><td class="py-3 text-gray-600">Sân 3</td><td class="py-3 text-gray-600">08:30–10:00</td><td class="py-3 text-gray-600">8/10</td><td class="py-3"><span class="badge-blue text-xs px-2 py-1 rounded-full font-medium">Đang diễn ra</span></td></tr>
+            <tr class="hover:bg-gray-50"><td class="py-3 font-medium text-gray-800">Lớp Trẻ em C</td><td class="py-3 text-gray-600">Nguyễn Mai</td><td class="py-3 text-gray-600">Sân 2</td><td class="py-3 text-gray-600">15:30–17:00</td><td class="py-3 text-gray-600">10/12</td><td class="py-3"><span class="badge-yellow text-xs px-2 py-1 rounded-full font-medium">Sắp diễn ra</span></td></tr>
+            <tr class="hover:bg-gray-50"><td class="py-3 font-medium text-gray-800">Lớp Cơ bản D</td><td class="py-3 text-gray-600">Trần Hùng</td><td class="py-3 text-gray-600">Sân 1</td><td class="py-3 text-gray-600">17:00–18:30</td><td class="py-3 text-gray-600">14/15</td><td class="py-3"><span class="badge-gray text-xs px-2 py-1 rounded-full font-medium">Chưa bắt đầu</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADMIN: QUẢN LÝ LỚP ═══════════════════ -->
+<div id="screen-admin-classes" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+        <svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <span class="text-white font-bold">ShuttleClass</span>
+    </div>
+    <nav class="p-3 space-y-0.5">
+      <a onclick="show('admin-dashboard')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Lớp học
+      </a>
+      <a onclick="show('admin-packages')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+        Gói học / Thẻ
+      </a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div><h1 class="text-lg font-semibold text-gray-900">Quản lý Lớp học</h1><p class="text-xs text-gray-500">14 lớp đang hoạt động</p></div>
+      <button class="text-white text-sm font-medium px-4 py-2 rounded-xl flex items-center gap-2" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Tạo lớp mới
+      </button>
+    </div>
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <input type="text" placeholder="Tìm kiếm lớp học..." class="border rounded-xl px-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 border-gray-300" style="--tw-ring-color:#dc2626"/>
+        <select class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none text-gray-600"><option>Tất cả HLV</option></select>
+        <select class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none text-gray-600"><option>Tất cả trình độ</option></select>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <!-- Card 1 -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 card-hover shadow-sm">
+          <div class="flex items-start justify-between mb-3">
+            <div><h3 class="font-semibold text-gray-900">Lớp Cơ bản A</h3><p class="text-xs text-gray-500 mt-0.5">T2-T4-T6 · 07:00–08:30</p></div>
+            <span class="badge-green text-xs px-2 py-1 rounded-full font-medium">Hoạt động</span>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fff1f2;color:#b91c1c">TH</div>
+            <span class="text-sm text-gray-700">Trần Hùng</span>
+            <span class="text-xs text-gray-400 ml-auto">Sân 1 · CS Q.1</span>
+          </div>
+          <div class="mb-3">
+            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Học viên</span><span class="font-medium text-gray-800">12 / 15</span></div>
+            <div class="skill-bar"><div class="court-fill" style="width:80%"></div></div>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full badge-gray">Cơ bản</span>
+          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+            <button class="flex-1 text-xs py-1.5 rounded-lg transition-colors" style="color:#dc2626" onmouseover="this.style.background='#fff1f2'" onmouseout="this.style.background=''">Chi tiết</button>
+            <button class="flex-1 text-xs text-gray-600 hover:bg-gray-50 py-1.5 rounded-lg transition-colors">Chỉnh sửa</button>
+          </div>
+        </div>
+        <!-- Card 2 -->
+        <div class="bg-white rounded-2xl border-2 p-5 card-hover shadow-sm" style="border-color:#dc2626">
+          <div class="flex items-start justify-between mb-3">
+            <div><h3 class="font-semibold text-gray-900">Lớp Nâng cao B</h3><p class="text-xs text-gray-500 mt-0.5">T3-T5-T7 · 08:30–10:00</p></div>
+            <span class="badge-green text-xs px-2 py-1 rounded-full font-medium">Hoạt động</span>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fff1f2;color:#b91c1c">LQ</div>
+            <span class="text-sm text-gray-700">Lê Quân</span>
+            <span class="text-xs text-gray-400 ml-auto">Sân 3 · CS Q.1</span>
+          </div>
+          <div class="mb-3">
+            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Học viên</span><span class="font-medium text-gray-800">10 / 10</span></div>
+            <div class="skill-bar"><div class="skill-fill" style="width:100%"></div></div>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full" style="background:#fff1f2;color:#b91c1c">Nâng cao</span>
+          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+            <button class="flex-1 text-xs py-1.5 rounded-lg" style="color:#dc2626">Chi tiết</button>
+            <button class="flex-1 text-xs text-gray-600 hover:bg-gray-50 py-1.5 rounded-lg">Chỉnh sửa</button>
+          </div>
+        </div>
+        <!-- Card 3 -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 card-hover shadow-sm">
+          <div class="flex items-start justify-between mb-3">
+            <div><h3 class="font-semibold text-gray-900">Lớp Trẻ em C</h3><p class="text-xs text-gray-500 mt-0.5">T7-CN · 15:30–17:00</p></div>
+            <span class="badge-green text-xs px-2 py-1 rounded-full font-medium">Hoạt động</span>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background:#f0fdf4;color:#15803d">NM</div>
+            <span class="text-sm text-gray-700">Nguyễn Mai</span>
+            <span class="text-xs text-gray-400 ml-auto">Sân 2 · CS Q.7</span>
+          </div>
+          <div class="mb-3">
+            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Học viên</span><span class="font-medium text-gray-800">8 / 12</span></div>
+            <div class="skill-bar"><div class="court-fill" style="width:67%"></div></div>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full" style="background:#fef9c3;color:#a16207">Trẻ em</span>
+          <div class="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+            <button class="flex-1 text-xs py-1.5 rounded-lg" style="color:#dc2626">Chi tiết</button>
+            <button class="flex-1 text-xs text-gray-600 hover:bg-gray-50 py-1.5 rounded-lg">Chỉnh sửa</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADMIN: GÓI HỌC ═══════════════════ -->
+<div id="screen-admin-packages" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <span class="text-white font-bold">ShuttleClass</span>
+    </div>
+    <nav class="p-3 space-y-0.5">
+      <a onclick="show('admin-dashboard')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Dashboard</a>
+      <a onclick="show('admin-classes')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>Lớp học</a>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>Gói học / Thẻ</a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div><h1 class="text-lg font-semibold text-gray-900">Gói học & Thẻ tập</h1><p class="text-xs text-gray-500">Quản lý gói học, cấp thẻ, theo dõi hết hạn</p></div>
+      <button class="text-white text-sm font-medium px-4 py-2 rounded-xl flex items-center gap-2" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Tạo gói mới
+      </button>
+    </div>
+    <div class="p-6 space-y-6">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">Danh sách gói học</h2>
+        <div class="grid grid-cols-4 gap-4">
+          <div class="rounded-2xl p-5 text-white shadow-md" style="background:linear-gradient(135deg,#ef4444,#dc2626)">
+            <div class="flex justify-between mb-3"><span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">Theo buổi</span><span class="text-lg font-bold">8 buổi</span></div>
+            <h3 class="font-bold text-lg">Gói Khởi đầu</h3>
+            <p class="text-red-100 text-xs mt-1">Hạn: 45 ngày</p>
+            <p class="text-2xl font-bold mt-3">600K <span class="text-sm font-normal text-red-100">đ</span></p>
+            <div class="mt-3 pt-3 border-t border-white/20 flex justify-between text-xs text-red-100"><span>48 học viên</span><button class="text-white hover:underline">Sửa</button></div>
+          </div>
+          <div class="rounded-2xl p-5 text-white shadow-md" style="background:linear-gradient(135deg,#b91c1c,#7f1d1d)">
+            <div class="flex justify-between mb-3"><span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">Theo buổi</span><span class="text-lg font-bold">12 buổi</span></div>
+            <h3 class="font-bold text-lg">Gói Tiêu chuẩn</h3>
+            <p class="text-red-200 text-xs mt-1">Hạn: 60 ngày</p>
+            <p class="text-2xl font-bold mt-3">850K <span class="text-sm font-normal text-red-200">đ</span></p>
+            <div class="mt-3 pt-3 border-t border-white/20 flex justify-between text-xs text-red-200"><span>62 học viên</span><button class="text-white hover:underline">Sửa</button></div>
+          </div>
+          <div class="rounded-2xl p-5 text-white shadow-md" style="background:linear-gradient(135deg,#16a34a,#15803d)">
+            <div class="flex justify-between mb-3"><span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">Theo buổi</span><span class="text-lg font-bold">20 buổi</span></div>
+            <h3 class="font-bold text-lg">Gói Chuyên sâu</h3>
+            <p class="text-green-100 text-xs mt-1">Hạn: 90 ngày</p>
+            <p class="text-2xl font-bold mt-3">1.3M <span class="text-sm font-normal text-green-100">đ</span></p>
+            <div class="mt-3 pt-3 border-t border-white/20 flex justify-between text-xs text-green-100"><span>28 học viên</span><button class="text-white hover:underline">Sửa</button></div>
+          </div>
+          <div class="rounded-2xl p-5 text-white shadow-md" style="background:linear-gradient(135deg,#166534,#14532d)">
+            <div class="flex justify-between mb-3"><span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">Theo tháng</span><span class="text-lg font-bold">30 ngày</span></div>
+            <h3 class="font-bold text-lg">Gói Tháng</h3>
+            <p class="text-green-200 text-xs mt-1">Không giới hạn buổi</p>
+            <p class="text-2xl font-bold mt-3">1.8M <span class="text-sm font-normal text-green-200">đ</span></p>
+            <div class="mt-3 pt-3 border-t border-white/20 flex justify-between text-xs text-green-200"><span>10 học viên</span><button class="text-white hover:underline">Sửa</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="font-semibold text-gray-800">Thẻ học viên</h3>
+          <div class="flex gap-2">
+            <span class="badge-green text-xs px-2 py-1 rounded-full">Active: 132</span>
+            <span class="badge-yellow text-xs px-2 py-1 rounded-full">Sắp hết: 8</span>
+            <span class="badge-red text-xs px-2 py-1 rounded-full">Hết: 4</span>
+          </div>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-gray-500 bg-gray-50">
+            <th class="text-left px-4 py-3 font-medium">Học viên</th><th class="text-left px-4 py-3 font-medium">Gói học</th>
+            <th class="text-left px-4 py-3 font-medium">Loại</th><th class="text-left px-4 py-3 font-medium">Hết hạn</th>
+            <th class="text-left px-4 py-3 font-medium">Còn lại</th><th class="text-left px-4 py-3 font-medium">Trạng thái</th>
+            <th class="text-left px-4 py-3 font-medium">Thao tác</th>
+          </tr></thead>
+          <tbody class="divide-y divide-gray-50">
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fff1f2;color:#b91c1c">NT</div><span class="font-medium">Nguyễn Thảo</span></div></td>
+              <td class="px-4 py-3 text-gray-600">Gói Tiêu chuẩn</td>
+              <td class="px-4 py-3"><span class="badge-blue text-xs px-2 py-1 rounded-full">Session</span></td>
+              <td class="px-4 py-3 font-medium" style="color:#dc2626">27/05/2026</td>
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="skill-bar w-16"><div class="skill-fill" style="width:17%"></div></div><span class="text-xs font-medium" style="color:#dc2626">2 buổi</span></div></td>
+              <td class="px-4 py-3"><span class="badge-red text-xs px-2 py-1 rounded-full font-medium">Sắp hết</span></td>
+              <td class="px-4 py-3"><button class="text-xs hover:underline" style="color:#dc2626">Gia hạn</button></td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#f0fdf4;color:#15803d">LM</div><span class="font-medium">Lê Minh</span></div></td>
+              <td class="px-4 py-3 text-gray-600">Gói Chuyên sâu</td>
+              <td class="px-4 py-3"><span class="badge-blue text-xs px-2 py-1 rounded-full">Session</span></td>
+              <td class="px-4 py-3 text-yellow-600 font-medium">08/07/2026</td>
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="skill-bar w-16"><div style="width:15%;height:100%;border-radius:3px;background:#eab308"></div></div><span class="text-xs font-medium text-yellow-600">3 buổi</span></div></td>
+              <td class="px-4 py-3"><span class="badge-yellow text-xs px-2 py-1 rounded-full font-medium">Sắp hết</span></td>
+              <td class="px-4 py-3"><button class="text-xs hover:underline" style="color:#dc2626">Gia hạn</button></td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#f0fdf4;color:#15803d">TV</div><span class="font-medium">Trần Văn</span></div></td>
+              <td class="px-4 py-3 text-gray-600">Gói Tháng</td>
+              <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded-full" style="background:#f0fdf4;color:#15803d">Monthly</span></td>
+              <td class="px-4 py-3 text-gray-600">31/05/2026</td>
+              <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="skill-bar w-16"><div class="court-fill" style="width:74%"></div></div><span class="text-xs font-medium text-gray-600">7 ngày</span></div></td>
+              <td class="px-4 py-3"><span class="badge-green text-xs px-2 py-1 rounded-full font-medium">Active</span></td>
+              <td class="px-4 py-3"><button class="text-xs hover:underline" style="color:#dc2626">Gia hạn</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COACH DASHBOARD ═══════════════════ -->
+<div id="screen-coach-dashboard" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><span class="text-white font-bold">ShuttleClass</span></div>
+      <div class="mt-3 flex items-center gap-2"><div class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-white font-bold" style="background:#16a34a">T</div><div><p class="text-white text-xs font-medium">Trần Hùng</p><p class="text-red-400 text-xs">Huấn luyện viên</p></div></div>
+    </div>
+    <nav class="p-3 space-y-0.5">
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Dashboard</a>
+      <a onclick="show('coach-attendance')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Điểm danh</a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Đánh giá học viên</a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div><h1 class="text-lg font-semibold text-gray-900">Chào buổi sáng, Trần Hùng! 🏸</h1><p class="text-xs text-gray-500">Thứ 7, 24/05/2026 · 2 lớp hôm nay</p></div>
+      <button class="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:#dc2626"></span></button>
+    </div>
+    <div class="p-6 space-y-5">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="rounded-2xl p-5 text-white shadow-lg" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+          <div class="flex justify-between mb-3"><span class="text-sm font-medium opacity-90">Buổi học tiếp theo</span><span class="bg-white/20 text-xs px-2 py-1 rounded-full">07:00 sáng</span></div>
+          <h3 class="text-xl font-bold">Lớp Cơ bản A</h3>
+          <p class="text-red-200 text-sm mt-1">07:00 – 08:30 · Sân 1</p>
+          <!-- Court line -->
+          <div class="my-3 flex gap-0.5 opacity-40">
+            <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+            <div class="w-4 h-0.5 bg-white rounded"></div>
+            <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm">12 học viên</span>
+            <button onclick="show('coach-attendance')" class="bg-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors" style="color:#dc2626">Điểm danh →</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+          <div class="flex justify-between mb-3"><span class="text-sm text-gray-500 font-medium">Buổi học thứ 2</span><span class="badge-gray text-xs px-2 py-1 rounded-full">17:00 chiều</span></div>
+          <h3 class="text-xl font-bold text-gray-900">Lớp Cơ bản D</h3>
+          <p class="text-gray-500 text-sm mt-1">17:00 – 18:30 · Sân 1</p>
+          <div class="flex items-center justify-between mt-6">
+            <span class="text-sm text-gray-600">14 học viên</span>
+            <button class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors" style="color:#dc2626;border-color:#fecdd3">Điểm danh →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly schedule -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <h3 class="font-semibold text-gray-800 mb-4">Lịch dạy tuần này</h3>
+        <div class="grid grid-cols-7 gap-1.5 text-center text-xs">
+          <div class="text-gray-500 pb-2">T2</div><div class="text-gray-500 pb-2">T3</div><div class="text-gray-500 pb-2">T4</div><div class="text-gray-500 pb-2">T5</div><div class="text-gray-500 pb-2">T6</div><div class="pb-2 font-bold" style="color:#dc2626">T7</div><div class="text-gray-500 pb-2">CN</div>
+          <div class="space-y-1"><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-A<br/>07:00</div><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-D<br/>17:00</div></div>
+          <div></div>
+          <div class="space-y-1"><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-A<br/>07:00</div><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-D<br/>17:00</div></div>
+          <div></div>
+          <div class="space-y-1"><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-A<br/>07:00</div><div class="rounded-lg py-2 px-1 text-xs leading-tight" style="background:#fff1f2;color:#b91c1c">CB-D<br/>17:00</div></div>
+          <div class="space-y-1"><div class="rounded-lg py-2 px-1 text-xs leading-tight font-semibold text-white" style="background:#dc2626">CB-A<br/>07:00</div><div class="rounded-lg py-2 px-1 text-xs leading-tight font-semibold text-white" style="background:#dc2626">CB-D<br/>17:00</div></div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COACH: ĐIỂM DANH ═══════════════════ -->
+<div id="screen-coach-attendance" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10 flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><span class="text-white font-bold">ShuttleClass</span></div>
+    <nav class="p-3 space-y-0.5">
+      <a onclick="show('coach-dashboard')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Dashboard</a>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Điểm danh</a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4">
+      <div class="flex items-center gap-2 mb-1"><button onclick="show('coach-dashboard')" class="text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button><h1 class="text-lg font-semibold text-gray-900">Điểm danh</h1></div>
+      <p class="text-xs text-gray-500">Lớp Cơ bản A · 24/05/2026 · 07:00–08:30 · Sân 1</p>
+    </div>
+    <div class="p-6">
+      <div class="grid grid-cols-3 gap-4 mb-5">
+        <div class="rounded-xl p-4 text-center" style="background:#f0fdf4"><p class="text-3xl font-bold" style="color:#16a34a">9</p><p class="text-xs mt-1" style="color:#15803d">Có mặt</p></div>
+        <div class="rounded-xl p-4 text-center" style="background:#fff1f2"><p class="text-3xl font-bold" style="color:#dc2626">2</p><p class="text-xs mt-1" style="color:#b91c1c">Vắng</p></div>
+        <div class="rounded-xl p-4 text-center bg-yellow-50"><p class="text-3xl font-bold text-yellow-600">1</p><p class="text-xs text-yellow-700 mt-1">Đi trễ</p></div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700">Danh sách (12 học viên)</span>
+          <div class="flex gap-2">
+            <button class="text-xs text-white px-3 py-1.5 rounded-lg" style="background:#16a34a">Tất cả có mặt</button>
+            <button class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg">Reset</button>
+          </div>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <!-- Row present -->
+          <div class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fff1f2;color:#b91c1c">NT</div>
+            <div class="flex-1"><p class="text-sm font-medium text-gray-800">Nguyễn Thảo</p><p class="text-xs text-gray-500">Còn <span class="font-semibold" style="color:#dc2626">2 buổi</span> · hết 27/05</p></div>
+            <div class="flex gap-1.5">
+              <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style="background:#16a34a">✓ Có mặt</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Vắng</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Trễ</button>
+            </div>
+          </div>
+          <!-- Row absent -->
+          <div class="flex items-center gap-4 px-4 py-3" style="background:#fff1f2">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:#fecdd3;color:#b91c1c">LM</div>
+            <div class="flex-1"><p class="text-sm font-medium text-gray-800">Lê Minh</p><p class="text-xs text-gray-500">Còn 8 buổi · hết 08/07</p></div>
+            <div class="flex gap-1.5">
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Có mặt</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style="background:#dc2626">✗ Vắng</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Trễ</button>
+            </div>
+          </div>
+          <!-- Row late -->
+          <div class="flex items-center gap-4 px-4 py-3 bg-yellow-50">
+            <div class="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-xs font-bold text-yellow-700">TV</div>
+            <div class="flex-1"><p class="text-sm font-medium text-gray-800">Trần Văn</p><p class="text-xs text-gray-500">Còn 5 buổi · hết 14/06</p></div>
+            <div class="flex gap-1.5">
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Có mặt</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Vắng</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-yellow-500">⏱ Trễ</button>
+            </div>
+          </div>
+          <!-- Row present -->
+          <div class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style="background:#f0fdf4;color:#15803d">PH</div>
+            <div class="flex-1"><p class="text-sm font-medium text-gray-800">Phạm Hoa</p><p class="text-xs text-gray-500">Còn 10 buổi · hết 20/06</p></div>
+            <div class="flex gap-1.5">
+              <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style="background:#16a34a">✓ Có mặt</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Vắng</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs bg-gray-100 text-gray-500">Trễ</button>
+            </div>
+          </div>
+        </div>
+        <div class="px-4 py-4 bg-gray-50 flex items-center justify-between">
+          <span class="text-xs text-gray-500">*Điểm danh tự động trừ buổi trong thẻ</span>
+          <button class="text-white text-sm font-semibold px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">Lưu điểm danh</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ STUDENT DASHBOARD ═══════════════════ -->
+<div id="screen-student-dashboard" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><span class="text-white font-bold">ShuttleClass</span></div>
+      <div class="mt-3 flex items-center gap-2"><div class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-white font-bold" style="background:#dc2626">N</div><div><p class="text-white text-xs font-medium">Nguyễn Thảo</p><p class="text-red-400 text-xs">Học viên</p></div></div>
+    </div>
+    <nav class="p-3 space-y-0.5">
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Tổng quan</a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Lịch học</a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Điểm danh</a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Tiến độ</a>
+      <a onclick="show('student-packages')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>Thẻ của tôi</a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4"><h1 class="text-lg font-semibold text-gray-900">Xin chào, Thảo! 🏸</h1><p class="text-xs text-gray-500">Thứ 7, 24/05/2026</p></div>
+    <div class="p-6 space-y-5">
+      <!-- Alert -->
+      <div class="border rounded-2xl p-4 flex items-start gap-3" style="background:#fff1f2;border-color:#fecdd3">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#fecdd3">
+          <svg class="w-4 h-4" style="color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold" style="color:#991b1b">Thẻ tập sắp hết!</p>
+          <p class="text-xs mt-0.5" style="color:#b91c1c">Thẻ "Gói Tiêu chuẩn" còn <strong>2 buổi</strong> và hết hạn ngày <strong>27/05/2026</strong>. Hãy gia hạn sớm.</p>
+        </div>
+        <button onclick="show('student-packages')" class="text-xs px-3 py-1.5 rounded-lg border flex-shrink-0" style="color:#dc2626;border-color:#fecdd3">Gia hạn</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm text-center"><p class="text-2xl font-bold" style="color:#dc2626">2</p><p class="text-xs text-gray-500 mt-1">Buổi còn lại</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm text-center"><p class="text-2xl font-bold" style="color:#16a34a">10</p><p class="text-xs text-gray-500 mt-1">Buổi đã học</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm text-center"><p class="text-2xl font-bold text-gray-800">83%</p><p class="text-xs text-gray-500 mt-1">Chuyên cần</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm text-center"><p class="text-2xl font-bold" style="color:#dc2626">3</p><p class="text-xs text-gray-500 mt-1">Ngày đến hạn</p></div>
+      </div>
+
+      <div class="grid grid-cols-5 gap-4">
+        <div class="col-span-3 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <h3 class="font-semibold text-gray-800 mb-4">Lịch sử điểm danh</h3>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 text-sm"><span class="w-24 text-gray-500 text-xs">22/05 T5</span><div class="flex-1 h-1.5 bg-gray-100 rounded-full"><div class="h-full rounded-full" style="width:100%;background:#16a34a"></div></div><span class="badge-green text-xs px-2 py-0.5 rounded-full">Có mặt</span></div>
+            <div class="flex items-center gap-3 text-sm"><span class="w-24 text-gray-500 text-xs">20/05 T3</span><div class="flex-1 h-1.5 bg-gray-100 rounded-full"><div class="h-full rounded-full" style="width:100%;background:#16a34a"></div></div><span class="badge-green text-xs px-2 py-0.5 rounded-full">Có mặt</span></div>
+            <div class="flex items-center gap-3 text-sm"><span class="w-24 text-gray-500 text-xs">17/05 T7</span><div class="flex-1 h-1.5 bg-gray-100 rounded-full"><div class="h-full rounded-full" style="width:75%;background:#eab308"></div></div><span class="badge-yellow text-xs px-2 py-0.5 rounded-full">Đi trễ</span></div>
+            <div class="flex items-center gap-3 text-sm"><span class="w-24 text-gray-500 text-xs">15/05 T5</span><div class="flex-1 h-1.5 bg-gray-100 rounded-full"><div class="h-full rounded-full" style="width:0%;background:#dc2626"></div></div><span class="badge-red text-xs px-2 py-0.5 rounded-full">Vắng</span></div>
+            <div class="flex items-center gap-3 text-sm"><span class="w-24 text-gray-500 text-xs">13/05 T3</span><div class="flex-1 h-1.5 bg-gray-100 rounded-full"><div class="h-full rounded-full" style="width:100%;background:#16a34a"></div></div><span class="badge-green text-xs px-2 py-0.5 rounded-full">Có mặt</span></div>
+          </div>
+        </div>
+        <div class="col-span-2 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <h3 class="font-semibold text-gray-800 mb-4">Kỹ năng của tôi</h3>
+          <div class="space-y-3">
+            <div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Kỹ thuật đánh</span><span class="font-medium">72%</span></div><div class="skill-bar"><div class="skill-fill" style="width:72%"></div></div></div>
+            <div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Di chuyển sân</span><span class="font-medium">65%</span></div><div class="skill-bar"><div class="court-fill" style="width:65%"></div></div></div>
+            <div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Chiến thuật</span><span class="font-medium">55%</span></div><div class="skill-bar"><div class="skill-fill" style="width:55%"></div></div></div>
+            <div><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Thể lực</span><span class="font-medium">80%</span></div><div class="skill-bar"><div class="court-fill" style="width:80%"></div></div></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-3">"Thảo có thể lực tốt, cần cải thiện chiến thuật khi đánh đơn."</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ STUDENT: THẺ TẬP ═══════════════════ -->
+<div id="screen-student-packages" class="screen min-h-screen">
+  <div class="w-60 min-h-screen flex-shrink-0" style="background:#180a0a">
+    <div class="p-5 border-b border-white/10 flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="12" r="4" fill="white"/><line x1="20" y1="16" x2="14" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="20" y2="32" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="16" x2="26" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><span class="text-white font-bold">ShuttleClass</span></div>
+    <nav class="p-3 space-y-0.5">
+      <a onclick="show('student-dashboard')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-200 text-sm hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Tổng quan</a>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>Thẻ của tôi</a>
+    </nav>
+  </div>
+  <div class="flex-1 overflow-auto bg-gray-50">
+    <div class="bg-white border-b px-6 py-4"><h1 class="text-lg font-semibold text-gray-900">Thẻ tập của tôi</h1><p class="text-xs text-gray-500">Quản lý gói học và lịch sử thanh toán</p></div>
+    <div class="p-6 space-y-5">
+      <!-- Active card -->
+      <div>
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">Thẻ đang sử dụng</h2>
+        <div class="rounded-3xl p-6 text-white shadow-xl max-w-sm relative overflow-hidden" style="background:linear-gradient(135deg,#b91c1c 0%,#7f1d1d 100%)">
+          <!-- Court line decoration on card -->
+          <div class="absolute bottom-0 left-0 right-0 h-1 opacity-30" style="background:linear-gradient(90deg,#16a34a,transparent,#16a34a)"></div>
+          <div class="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" style="background:radial-gradient(circle,#ef4444,transparent);transform:translate(30%,-30%)"></div>
+
+          <div class="flex items-center justify-between mb-5">
+            <div><p class="text-red-300 text-xs">Học viên</p><p class="font-bold text-lg">Nguyễn Thảo</p></div>
+            <div class="text-right"><p class="text-red-300 text-xs">Loại thẻ</p><p class="font-semibold text-sm">Theo buổi</p></div>
+          </div>
+          <p class="text-red-300 text-xs mb-1">Gói học</p>
+          <p class="text-xl font-bold">Gói Tiêu chuẩn (12 buổi)</p>
+          <!-- Court line divider -->
+          <div class="flex gap-1 my-4 opacity-40">
+            <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+            <div class="w-4 h-0.5 bg-white rounded"></div>
+            <div class="flex-1 h-0.5 rounded" style="background:#16a34a"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-white/15 rounded-2xl p-3"><p class="text-red-300 text-xs">Buổi còn lại</p><p class="text-3xl font-bold mt-1">2</p><p class="text-red-300 text-xs">/ 12 buổi</p></div>
+            <div class="bg-white/15 rounded-2xl p-3"><p class="text-red-300 text-xs">Hết hạn</p><p class="text-xl font-bold mt-1">27/05</p><p class="text-yellow-300 text-xs font-semibold">Còn 3 ngày ⚠️</p></div>
+          </div>
+          <div class="mb-2">
+            <div class="flex justify-between text-xs text-red-300 mb-1.5"><span>Đã dùng 10/12 buổi</span><span>83%</span></div>
+            <div class="h-2 bg-white/20 rounded-full"><div class="h-2 bg-white rounded-full" style="width:83%"></div></div>
+          </div>
+          <p class="text-red-300 text-xs">Kích hoạt: 01/04/2026</p>
+        </div>
+      </div>
+
+      <!-- Packages to buy -->
+      <div>
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">Mua gói mới / Gia hạn</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white border-2 border-gray-200 hover:border-red-300 rounded-2xl p-4 cursor-pointer transition-colors">
+            <div class="flex items-center justify-between mb-2"><span class="badge-red text-xs px-2 py-0.5 rounded-full">Session</span><span class="font-bold" style="color:#dc2626">600K đ</span></div>
+            <h3 class="font-semibold text-gray-800">Gói Khởi đầu</h3>
+            <p class="text-xs text-gray-500 mt-1">8 buổi · hạn 45 ngày</p>
+            <button class="mt-3 w-full text-white text-xs py-2 rounded-xl" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">Chọn gói này</button>
+          </div>
+          <div class="bg-white border-2 rounded-2xl p-4 cursor-pointer relative" style="border-color:#dc2626">
+            <div class="absolute -top-2.5 left-4 text-white text-xs px-2 py-0.5 rounded-full" style="background:#dc2626">Phổ biến</div>
+            <div class="flex items-center justify-between mb-2"><span class="badge-red text-xs px-2 py-0.5 rounded-full">Session</span><span class="font-bold" style="color:#dc2626">850K đ</span></div>
+            <h3 class="font-semibold text-gray-800">Gói Tiêu chuẩn</h3>
+            <p class="text-xs text-gray-500 mt-1">12 buổi · hạn 60 ngày</p>
+            <button class="mt-3 w-full text-white text-xs py-2 rounded-xl" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">Chọn gói này</button>
+          </div>
+          <div class="bg-white border-2 border-gray-200 hover:border-green-300 rounded-2xl p-4 cursor-pointer transition-colors">
+            <div class="flex items-center justify-between mb-2"><span class="badge-green text-xs px-2 py-0.5 rounded-full">Session</span><span class="font-bold" style="color:#16a34a">1.3M đ</span></div>
+            <h3 class="font-semibold text-gray-800">Gói Chuyên sâu</h3>
+            <p class="text-xs text-gray-500 mt-1">20 buổi · hạn 90 ngày</p>
+            <button class="mt-3 w-full text-white text-xs py-2 rounded-xl" style="background:linear-gradient(135deg,#16a34a,#15803d)">Chọn gói này</button>
+          </div>
+          <div class="bg-white border-2 border-gray-200 hover:border-green-300 rounded-2xl p-4 cursor-pointer transition-colors">
+            <div class="flex items-center justify-between mb-2"><span class="text-xs px-2 py-0.5 rounded-full" style="background:#dcfce7;color:#15803d">Monthly</span><span class="font-bold" style="color:#16a34a">1.8M đ</span></div>
+            <h3 class="font-semibold text-gray-800">Gói Tháng</h3>
+            <p class="text-xs text-gray-500 mt-1">30 ngày · không giới hạn buổi</p>
+            <button class="mt-3 w-full text-white text-xs py-2 rounded-xl" style="background:linear-gradient(135deg,#166534,#14532d)">Chọn gói này</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-100"><h3 class="font-semibold text-gray-800">Lịch sử thẻ</h3></div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-gray-500 bg-gray-50"><th class="text-left px-4 py-2.5 font-medium">Gói</th><th class="text-left px-4 py-2.5 font-medium">Kích hoạt</th><th class="text-left px-4 py-2.5 font-medium">Hết hạn</th><th class="text-left px-4 py-2.5 font-medium">Đã dùng</th><th class="text-left px-4 py-2.5 font-medium">Trạng thái</th></tr></thead>
+          <tbody class="divide-y divide-gray-50">
+            <tr class="hover:bg-gray-50"><td class="px-4 py-3 font-medium text-gray-800">Gói Tiêu chuẩn</td><td class="px-4 py-3 text-gray-600">01/04/2026</td><td class="px-4 py-3 font-medium" style="color:#dc2626">27/05/2026</td><td class="px-4 py-3 text-gray-600">10/12</td><td class="px-4 py-3"><span class="badge-blue text-xs px-2 py-1 rounded-full font-medium">Đang dùng</span></td></tr>
+            <tr class="hover:bg-gray-50"><td class="px-4 py-3 font-medium text-gray-800">Gói Khởi đầu</td><td class="px-4 py-3 text-gray-600">01/02/2026</td><td class="px-4 py-3 text-gray-600">17/03/2026</td><td class="px-4 py-3 text-gray-600">8/8</td><td class="px-4 py-3"><span class="badge-gray text-xs px-2 py-1 rounded-full font-medium">Đã dùng hết</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function show(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('active');
+}
+</script>
+</body>
+</html>

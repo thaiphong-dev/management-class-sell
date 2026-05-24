@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(not exist *)",
+      "Bash(mkdir -p \"P:/claude/management-class/.claude\" \"P:/claude/management-class/mockup\")"
+    ]
+  }
+}

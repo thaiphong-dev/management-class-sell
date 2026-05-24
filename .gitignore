@@ -1,0 +1,19 @@
+# Environment files — chứa secrets, KHÔNG commit
+.env.local
+.env.example
+.env.*.local
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Vite
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
