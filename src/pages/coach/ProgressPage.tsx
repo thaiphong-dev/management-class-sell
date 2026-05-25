@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { SkillRadar } from '@/components/progress/SkillRadar'
 import { formatDate } from '@/lib/utils'
 import type { SkillScores } from '@/types'
@@ -131,6 +132,7 @@ export default function CoachProgressPage() {
 
       if (error) {
         console.error('Failed to load evaluations:', error.message)
+        toast({ title: 'Lỗi tải đánh giá', description: error.message, variant: 'destructive' })
       }
       setEvals((data ?? []) as EvalRecord[])
       setIsLoading(false)
@@ -142,17 +144,19 @@ export default function CoachProgressPage() {
     if (view.stage !== 'eval' || !coachId) return
     setSaving(true)
 
+    const clamp = (val: string) => Math.min(100, Math.max(0, parseInt(val) || 0))
+
     const skills: SkillScores = {
-      technique: parseInt(form.technique) || 0,
-      footwork:  parseInt(form.footwork)  || 0,
-      tactics:   parseInt(form.tactics)   || 0,
-      fitness:   parseInt(form.fitness)   || 0,
+      technique: clamp(form.technique),
+      footwork:  clamp(form.footwork),
+      tactics:   clamp(form.tactics),
+      fitness:   clamp(form.fitness),
     }
 
     const { error } = await supabase.from('progress_evaluations').insert({
       student_id:    view.studentId,
       coach_id:      coachId,
-      overall_score: parseInt(form.overall_score) || 0,
+      overall_score: clamp(form.overall_score),
       skills,
       notes:         form.notes.trim() || null,
     } as never)
@@ -308,8 +312,9 @@ export default function CoachProgressPage() {
           </div>
           <div>
             <Label>Nhận xét</Label>
-            <Input
-              className="mt-1"
+            <Textarea
+              className="mt-1 resize-none"
+              rows={3}
               placeholder="Nhận xét về học viên..."
               value={form.notes}
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}

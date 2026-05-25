@@ -199,10 +199,10 @@ Hoặc đảm bảo `scripts/seed-users.mjs` tạo class assignment cho coach.
 
 ## Bảng tổng hợp
 
-| Bug ID | Mức độ | File chính | Mô tả ngắn |
-|--------|--------|-----------|-----------|
-| BUG-C01 | CRITICAL | `migrations/005_rls.sql`, `ClassesPage.tsx:69` | RLS infinite recursion class_students↔students |
-| BUG-C02 | MINOR | `migrations/007_seed.sql` | Coach test account chưa có lớp phân công |
+| Bug ID | Mức độ | File chính | Mô tả ngắn | Status |
+|--------|--------|-----------|-----------|--------|
+| BUG-C01 | CRITICAL | `migrations/005_rls.sql`, `ClassesPage.tsx:69` | RLS infinite recursion class_students↔students | ✅ Fixed — `migrations/013_fix_coach_student_rls.sql` |
+| BUG-C02 | MINOR | `migrations/007_seed.sql` | Coach test account chưa có lớp phân công | ✅ Fixed — class + sessions added to `007_seed.sql` |
 
 ---
 

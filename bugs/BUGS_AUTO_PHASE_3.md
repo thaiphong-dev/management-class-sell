@@ -211,8 +211,8 @@ element is not visible: <button class="ml-auto lg:hidden text-white/40 hover:tex
 
 | Bug ID | Mức độ | Phase | Mô tả ngắn | Status |
 |--------|--------|-------|-----------|--------|
-| BUG-C01 | CRITICAL | P2 | RLS infinite recursion class_students↔students | Open |
-| BUG-C02 | MINOR | P2 | Coach test account chưa có lớp phân công | Open |
-| BUG-P01 | MAJOR | P3 | Coach không có sessions ±7 ngày → Attendance list empty | Open |
-| BUG-P02 | MINOR | P3 | Student1 chưa enroll → Schedule/Attendance/Progress đều empty | Open |
-| BUG-P03 | MINOR | P3 | Test selector `button.filter(svg).first()` bắt sidebar hidden | Fixed in tests |
+| BUG-C01 | CRITICAL | P2 | RLS infinite recursion class_students↔students | ✅ Fixed — `migrations/013_fix_coach_student_rls.sql` |
+| BUG-C02 | MINOR | P2 | Coach test account chưa có lớp phân công | ✅ Fixed — `migrations/007_seed.sql` |
+| BUG-P01 | MAJOR | P3 | Coach không có sessions ±7 ngày → Attendance list empty | ✅ Fixed — `migrations/007_seed.sql` (sessions +1/+3/+5 days) |
+| BUG-P02 | MINOR | P3 | Student1 chưa enroll → Schedule/Attendance/Progress đều empty | ✅ Fixed — `migrations/007_seed.sql` (class_students) |
+| BUG-P03 | MINOR | P3 | Test selector `button.filter(svg).first()` bắt sidebar hidden | ✅ Fixed in tests |

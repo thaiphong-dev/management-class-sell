@@ -332,12 +332,12 @@ export default function StudentDashboardPage() {
                 <div key={key}>
                   <div className="flex justify-between mb-1">
                     <span className="text-xs text-gray-600">{label}</span>
-                    <span className="text-xs font-semibold text-gray-900">{val}/10</span>
+                    <span className="text-xs font-semibold text-gray-900">{val}/100</span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${color} rounded-full transition-all`}
-                      style={{ width: `${(val as number) * 10}%` }}
+                      style={{ width: `${val as number}%` }}
                     />
                   </div>
                 </div>

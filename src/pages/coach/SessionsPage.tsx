@@ -76,9 +76,10 @@ export default function CoachSessionsPage() {
       return
     }
 
-    // BUG-P2-005: Verify this class belongs to the current coach
+    // Verify this class belongs to the current coach.
+    // If coachId is null (fetch failed / not a coach), block access regardless.
     const cls = classRes.data as Class
-    if (coachId && cls.coach_id !== coachId) {
+    if (!coachId || cls.coach_id !== coachId) {
       toast({ title: 'Không có quyền truy cập', description: 'Lớp này không thuộc quyền quản lý của bạn.', variant: 'destructive' })
       navigate('/coach/classes')
       return

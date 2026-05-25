@@ -137,18 +137,23 @@ export default function PackagesPage() {
   }, [toast])
 
   const loadStudents = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('students')
       .select('id, profiles(full_name, phone)')
       .eq('status', 'active')
       .order('id')
 
+    if (error) {
+      console.error('Failed to load students:', error.message)
+      toast({ title: 'Lỗi tải danh sách học viên', description: error.message, variant: 'destructive' })
+      return
+    }
     setStudents(((data ?? []) as unknown[]).map((raw: unknown) => {
       const r = raw as Record<string, unknown>
       const p = r.profiles as { full_name?: string; phone?: string } | null
       return { id: r.id as string, name: p?.full_name ?? '—', phone: p?.phone ?? null }
     }))
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     Promise.all([loadPackages(), loadStudentPackages(), loadStudents()])
@@ -249,7 +254,13 @@ export default function PackagesPage() {
 
     if (payError) {
       console.error('Failed to record payment:', payError.message)
-      toast({ title: 'Cảnh báo: Thẻ đã cấp nhưng lỗi ghi thanh toán', description: payError.message, variant: 'destructive' })
+      // Rollback: delete the student_package that was just created to keep data consistent
+      await supabase.from('student_packages').delete().eq('id', spId)
+      toast({
+        title: 'Lỗi ghi thanh toán',
+        description: 'Không thể ghi nhận thanh toán. Thẻ chưa được cấp — vui lòng thử lại.',
+        variant: 'destructive',
+      })
     } else {
       toast({ title: 'Đã cấp thẻ và ghi nhận thanh toán' })
       setAssignDialog(false)

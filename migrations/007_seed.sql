@@ -81,3 +81,67 @@ values
     'active'
   )
 on conflict (id) do nothing;
+
+-- =============================================
+-- Test class for coach1 (fix BUG-C02)
+-- Assigns coach1@shuttleclass.vn to "Lớp Cơ bản A"
+-- =============================================
+insert into classes (id, name, coach_id, facility_id, court_id, skill_level, max_students, status)
+select
+  '40000000-0000-0000-0000-000000000001'::uuid,
+  'Lớp Cơ bản A',
+  co.id,
+  '10000000-0000-0000-0000-000000000001'::uuid,
+  '20000000-0000-0000-0000-000000000001'::uuid,
+  'beginner',
+  10,
+  'active'
+from coaches co
+join auth.users u on u.id = co.user_id
+where u.email = 'coach1@shuttleclass.vn'
+limit 1
+on conflict (id) do nothing;
+
+-- =============================================
+-- Sessions in ±7 days for coach1's class (fix BUG-P01)
+-- Uses ON CONFLICT DO UPDATE to refresh dates on every re-run
+-- =============================================
+insert into sessions (id, class_id, scheduled_at, duration_min, status)
+values
+  (
+    '50000000-0000-0000-0000-000000000001'::uuid,
+    '40000000-0000-0000-0000-000000000001'::uuid,
+    (current_date + interval '1 day' + time '08:00:00')::timestamptz,
+    90,
+    'scheduled'
+  ),
+  (
+    '50000000-0000-0000-0000-000000000002'::uuid,
+    '40000000-0000-0000-0000-000000000001'::uuid,
+    (current_date + interval '3 days' + time '08:00:00')::timestamptz,
+    90,
+    'scheduled'
+  ),
+  (
+    '50000000-0000-0000-0000-000000000003'::uuid,
+    '40000000-0000-0000-0000-000000000001'::uuid,
+    (current_date + interval '5 days' + time '08:00:00')::timestamptz,
+    90,
+    'scheduled'
+  )
+on conflict (id) do update
+  set scheduled_at = excluded.scheduled_at;
+
+-- =============================================
+-- Enroll student1 in coach1's class (fix BUG-P02)
+-- =============================================
+insert into class_students (class_id, student_id, status)
+select
+  '40000000-0000-0000-0000-000000000001'::uuid,
+  s.id,
+  'active'
+from students s
+join auth.users u on u.id = s.user_id
+where u.email = 'student1@shuttleclass.vn'
+  and exists (select 1 from classes where id = '40000000-0000-0000-0000-000000000001')
+on conflict (class_id, student_id) do nothing;

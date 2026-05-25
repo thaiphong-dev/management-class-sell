@@ -127,12 +127,12 @@
 
 | # | Bug | Severity | File | Status |
 |---|-----|----------|------|--------|
-| BUG-P3-001 | AttendanceSheetPage thiếu coach ownership check | MAJOR | `coach/AttendanceSheetPage.tsx:48` | 🔴 Open |
-| BUG-P3-002 | AttendanceSheetPage không verify sessionId thuộc classId | MAJOR | `coach/AttendanceSheetPage.tsx:51` | 🔴 Open |
-| BUG-P3-003 | Coach Dashboard còn placeholder "Phase 3" | MINOR | `coach/DashboardPage.tsx:131` | 🔴 Open |
-| BUG-P3-004 | CoachProgressPage: eval fetch error không toast | MINOR | `coach/ProgressPage.tsx:132` | 🔴 Open |
-| BUG-P3-005 | CoachProgressPage: Nhận xét dùng Input thay Textarea | MINOR | `coach/ProgressPage.tsx:313` | 🔴 Open |
-| BUG-P3-006 | CoachProgressPage: skill scores không validate 0-100 | MINOR | `coach/ProgressPage.tsx:145` | 🔴 Open |
+| BUG-P3-001 | AttendanceSheetPage thiếu coach ownership check | MAJOR | `coach/AttendanceSheetPage.tsx:48` | ✅ Fixed |
+| BUG-P3-002 | AttendanceSheetPage không verify sessionId thuộc classId | MAJOR | `coach/AttendanceSheetPage.tsx:51` | ✅ Fixed |
+| BUG-P3-003 | Coach Dashboard còn placeholder "Phase 3" | MINOR | `coach/DashboardPage.tsx:131` | ✅ Fixed (Phase 6 rewrite) |
+| BUG-P3-004 | CoachProgressPage: eval fetch error không toast | MINOR | `coach/ProgressPage.tsx:132` | ✅ Fixed |
+| BUG-P3-005 | CoachProgressPage: Nhận xét dùng Input thay Textarea | MINOR | `coach/ProgressPage.tsx:313` | ✅ Fixed |
+| BUG-P3-006 | CoachProgressPage: skill scores không validate 0-100 | MINOR | `coach/ProgressPage.tsx:145` | ✅ Fixed |
 
 ## Build Status
 - `npm run typecheck`: ✅ PASS (0 errors)

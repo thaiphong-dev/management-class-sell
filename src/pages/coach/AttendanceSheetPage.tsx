@@ -46,13 +46,47 @@ export default function CoachAttendanceSheetPage() {
   const [saving, setSaving] = useState(false)
 
   const loadData = useCallback(async () => {
-    if (!classId || !sessionId) return
+    if (!classId || !sessionId || !profile) return
 
+    // ── BUG-P3-001: Verify this class belongs to the logged-in coach ──────────
+    const coachRes = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('user_id', profile.id)
+      .maybeSingle()
+
+    if (coachRes.error || !coachRes.data) {
+      toast({ title: 'Không có quyền truy cập', description: 'Tài khoản không phải HLV.', variant: 'destructive' })
+      navigate('/coach/classes')
+      return
+    }
+    const coachId = (coachRes.data as { id: string }).id
+
+    const classRes = await supabase
+      .from('classes')
+      .select('id, coach_id')
+      .eq('id', classId)
+      .maybeSingle()
+
+    if (classRes.error || !classRes.data) {
+      toast({ title: 'Không tìm thấy lớp học', variant: 'destructive' })
+      navigate('/coach/classes')
+      return
+    }
+    const classRow = classRes.data as { id: string; coach_id: string }
+    if (classRow.coach_id !== coachId) {
+      toast({ title: 'Không có quyền truy cập', description: 'Lớp học này không thuộc quyền quản lý của bạn.', variant: 'destructive' })
+      navigate('/coach/classes')
+      return
+    }
+
+    // ── BUG-P3-002: Verify the session belongs to this class ─────────────────
     const [sessionRes, classStudentsRes, attendanceRes] = await Promise.all([
       supabase.from('sessions')
         .select('id, scheduled_at, duration_min, status, classes(name)')
         .eq('id', sessionId)
-        .single(),
+        .eq('class_id', classId)   // ← ensures session belongs to this class
+        .maybeSingle(),
       supabase.from('class_students')
         .select('student_id, students(id, user_id, profiles(id, full_name))')
         .eq('class_id', classId)
@@ -62,9 +96,8 @@ export default function CoachAttendanceSheetPage() {
         .eq('session_id', sessionId),
     ])
 
-    if (sessionRes.error) {
-      console.error('Failed to load session:', sessionRes.error.message)
-      toast({ title: 'Lỗi tải buổi học', description: sessionRes.error.message, variant: 'destructive' })
+    if (sessionRes.error || !sessionRes.data) {
+      toast({ title: 'Không tìm thấy buổi học', description: 'Buổi học không tồn tại hoặc không thuộc lớp này.', variant: 'destructive' })
       navigate(`/coach/classes/${classId}/sessions`)
       return
     }
@@ -125,7 +158,7 @@ export default function CoachAttendanceSheetPage() {
     }))
 
     setIsLoading(false)
-  }, [classId, sessionId, toast, navigate])
+  }, [classId, sessionId, profile, toast, navigate])
 
   useEffect(() => {
     if (profile) loadData()
