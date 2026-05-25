@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(not exist *)",
-      "Bash(mkdir -p \"P:/claude/management-class/.claude\" \"P:/claude/management-class/mockup\")"
+      "Bash(mkdir -p \"P:/claude/management-class/.claude\" \"P:/claude/management-class/mockup\")",
+      "Bash(npm --version)",
+      "Bash(npm run *)",
+      "Bash(npm run:*)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(cat src/lib/supabase.ts)",
+      "Bash(cat src/lib/supabaseClient.ts)",
+      "Bash(Remove-Item tests\\\\e2e\\\\diag-users.spec.ts)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }

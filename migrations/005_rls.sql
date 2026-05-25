@@ -21,12 +21,13 @@ create policy "profiles_update_own"
   using (auth.uid() = id);
 
 -- Admin can do anything
+-- NOTE: cannot use "SELECT FROM profiles" here — would cause infinite recursion.
+--       Use JWT claim instead (role stored in user_metadata at signup).
 create policy "profiles_admin_all"
   on profiles
-  using (exists (
-    select 1 from profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  ));
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
 
 -- =============================================
 -- facilities
@@ -88,6 +89,43 @@ create policy "coaches_admin_all"
   ));
 
 -- =============================================
+-- Helper functions (break circular RLS refs)
+-- =============================================
+-- students_coach_select  → queries class_students
+-- class_students_student_select → queries students   (CYCLE!)
+-- sessions_student_select → queries class_students → students  (CYCLE!)
+-- Fix: use SECURITY DEFINER so the sub-queries bypass RLS entirely.
+
+create or replace function auth_is_coach_of_student(p_student_id uuid)
+returns boolean
+language sql security definer stable
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from class_students cs
+    join classes   c  on c.id  = cs.class_id
+    join coaches   co on co.id = c.coach_id
+    where cs.student_id = p_student_id
+      and co.user_id = auth.uid()
+  );
+$$;
+
+create or replace function auth_student_in_class(p_class_id uuid)
+returns boolean
+language sql security definer stable
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from students s
+    join class_students cs on cs.student_id = s.id
+    where s.user_id   = auth.uid()
+      and cs.class_id = p_class_id
+  );
+$$;
+
+-- =============================================
 -- students
 -- =============================================
 alter table students enable row level security;
@@ -101,16 +139,10 @@ create policy "students_select_own"
   on students for select
   using (user_id = auth.uid());
 
--- Coach can view students in own classes
+-- Coach can view students in own classes (uses SECURITY DEFINER fn to avoid recursion)
 create policy "students_coach_select"
   on students for select
-  using (exists (
-    select 1 from class_students cs
-    join classes c on c.id = cs.class_id
-    join coaches co on co.id = c.coach_id
-    where cs.student_id = students.id
-      and co.user_id = auth.uid()
-  ));
+  using (auth_is_coach_of_student(id));
 
 create policy "students_update_own"
   on students for update
@@ -169,9 +201,7 @@ drop policy if exists "class_students_admin_all"       on class_students;
 
 create policy "class_students_student_select"
   on class_students for select
-  using (exists (
-    select 1 from students where id = class_students.student_id and user_id = auth.uid()
-  ));
+  using (auth_student_in_class(class_id));
 
 create policy "class_students_coach_select"
   on class_students for select
@@ -197,11 +227,7 @@ drop policy if exists "sessions_admin_all"       on sessions;
 
 create policy "sessions_student_select"
   on sessions for select
-  using (exists (
-    select 1 from class_students cs
-    join students s on s.id = cs.student_id
-    where cs.class_id = sessions.class_id and s.user_id = auth.uid()
-  ));
+  using (auth_student_in_class(class_id));
 
 create policy "sessions_coach_all"
   on sessions

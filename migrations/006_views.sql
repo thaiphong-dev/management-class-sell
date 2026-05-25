@@ -14,6 +14,7 @@ select
   pr.phone       as student_phone,
   case
     when sp.expires_at < now() + interval '3 days'                       then 'critical'
+    when sp.sessions_remaining = 1 and p.package_type = 'session'        then 'critical'
     when sp.expires_at < now() + interval '7 days'                       then 'warning'
     when sp.sessions_remaining <= 3 and p.package_type = 'session'       then 'warning'
     else 'ok'

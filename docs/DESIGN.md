@@ -5,6 +5,8 @@
 
 ## 1. Design Tokens (Tailwind Config)
 
+> **Màu sắc chủ đạo:** Đỏ cầu lông (`#DC2626`) + Xanh lá sân (`#16A34A`) — themed cho ứng dụng badminton.
+
 ```ts
 // tailwind.config.ts
 export default {
@@ -12,34 +14,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',  // Primary CTA
-          600: '#0284c7',  // Hover
-          700: '#0369a1',  // Active/Focus
-          800: '#075985',
-          900: '#0c4a6e',
+        // Red primary (brand color cho ShuttleClass)
+        primary: {
+          50:  '#fef2f2',
+          100: '#fee2e2',
+          500: '#ef4444',
+          600: '#dc2626',  // Primary CTA
+          700: '#b91c1c',  // Hover / Active
+          900: '#7f1d1d',
+          DEFAULT: 'hsl(var(--primary))',
         },
-        sidebar: '#0f172a',   // Dark sidebar background
+        // Court green (secondary)
+        court: {
+          50:  '#f0fdf4',
+          600: '#16a34a',
+          700: '#15803d',
+          DEFAULT: '#16a34a',
+        },
+        sidebar: '#180a0a',   // Dark red-black sidebar background
         surface: '#f8fafc',   // Page background
       },
-      borderRadius: {
-        card: '16px',    // Card border radius
-        input: '12px',   // Input border radius
-        button: '10px',  // Button border radius
-      },
-      boxShadow: {
-        card: '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
-        'card-hover': '0 4px 20px 0 rgb(0 0 0 / 0.08)',
-      }
     }
   }
 }
 ```
+
+> **Lưu ý cho dev:** Dùng prefix `primary-*` (không phải `brand-*`) cho màu đỏ chính.
+> Ví dụ: `bg-primary-600`, `text-primary-700`, `border-primary-500`.
 
 ---
 
@@ -59,7 +60,7 @@ export default {
 └───────────────┴─────────────────────────────────────┘
 ```
 
-- **Sidebar:** `w-60` (240px), `bg-sidebar (#0f172a)`, fixed height `min-h-screen`
+- **Sidebar:** `w-60` (240px), `bg-sidebar (#180a0a)`, fixed height `min-h-screen`
 - **Header:** `h-16`, `bg-white`, `border-b border-gray-200`, `sticky top-0 z-40`
 - **Content:** `flex-1`, `bg-surface (#f8fafc)`, `overflow-auto`
 - **Content padding:** `p-6` (24px)
