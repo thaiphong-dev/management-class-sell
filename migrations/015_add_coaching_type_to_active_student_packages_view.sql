@@ -1,6 +1,7 @@
 -- 015_add_coaching_type_to_active_student_packages_view.sql
 -- Update active_student_packages view to include coaching_type from packages
 
+drop view if exists active_student_packages cascade;
 create or replace view active_student_packages as
 select
   sp.*,

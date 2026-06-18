@@ -1,5 +1,8 @@
--- 006_views.sql
 -- Useful views
+
+drop view if exists active_student_packages cascade;
+drop view if exists sessions_with_details cascade;
+drop view if exists monthly_revenue cascade;
 
 -- =============================================
 -- Active student packages with alert level

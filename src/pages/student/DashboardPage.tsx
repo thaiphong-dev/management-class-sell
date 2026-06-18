@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar, CreditCard, TrendingUp, AlertTriangle,
-  CheckCircle2, XCircle, Clock, ChevronRight,
+  CheckCircle2, XCircle, Clock, ChevronRight, QrCode
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { formatDate } from '@/lib/utils'
 import type { SkillScores } from '@/types'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from '@/components/ui/dialog'
 
 interface ActiveCard {
   id: string
@@ -56,7 +60,7 @@ const STATUS_COLOR = {
   present: 'text-green-600 bg-green-50',
   absent:  'text-red-500 bg-red-50',
   late:    'text-yellow-600 bg-yellow-50',
-  excused: 'text-blue-600 bg-blue-50',
+  excused: 'text-blue-600 bg-blue-55/60',
 }
 const STATUS_LABEL = {
   present: 'Có mặt',
@@ -74,6 +78,8 @@ export default function StudentDashboardPage() {
   const [stats, setStats] = useState<Stats>({ total: 0, present: 0, late: 0 })
   const [latestSkills, setLatestSkills] = useState<LatestSkills | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [studentId, setStudentId] = useState<string | null>(null)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -93,6 +99,7 @@ export default function StudentDashboardPage() {
       }
       const student = studentData as { id: string } | null
       if (!student) { setIsLoading(false); return }
+      setStudentId(student.id)
 
       // Step 2: get class IDs the student is enrolled in
       const { data: classData } = await supabase
@@ -223,11 +230,21 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">
-          Xin chào, {profile?.full_name} 👋
-        </h2>
-        <p className="text-sm text-gray-500 mt-0.5">Chào mừng trở lại Thái Phong Badminton Class</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200/60 shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            Xin chào, {profile?.full_name} 👋
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">Chào mừng trở lại Thái Phong Badminton Class</p>
+        </div>
+        {studentId && (
+          <Button
+            onClick={() => setQrModalOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl gap-2 flex items-center h-11 px-4 w-fit shadow-sm"
+          >
+            <QrCode className="w-4.5 h-4.5" /> Mã QR đi học
+          </Button>
+        )}
       </div>
 
       {/* Active membership card */}
@@ -439,6 +456,46 @@ export default function StudentDashboardPage() {
             })}
           </div>
         </div>
+      )}
+      {/* QR Code Modal */}
+      {qrModalOpen && studentId && (
+        <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+          <DialogContent className="max-w-sm rounded-3xl">
+            <DialogHeader className="text-center">
+              <DialogTitle className="font-extrabold text-lg text-center text-red-600 flex items-center justify-center gap-1.5">
+                <QrCode className="w-5 h-5 text-red-500" /> Mã QR Đi Học
+              </DialogTitle>
+              <DialogDescription className="text-xs text-center text-gray-500">
+                Đưa mã này cho huấn luyện viên quét để điểm danh khi đến lớp
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col items-center justify-center py-6 space-y-4">
+              <div className="bg-white p-4 rounded-3xl border border-gray-150 shadow-inner flex items-center justify-center w-60 h-60">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                    window.location.origin + '/coach/attendance/scan?studentId=' + studentId
+                  )}`}
+                  alt="Mã QR đi học"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-extrabold text-gray-900">{profile?.full_name}</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Học viên Thái Phong Badminton Class</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-805 rounded-xl font-bold py-5 text-xs"
+                onClick={() => setQrModalOpen(false)}
+              >
+                Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

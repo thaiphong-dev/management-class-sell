@@ -327,8 +327,8 @@ export default function LandingPage() {
                         <span className="text-xs text-gray-400 font-normal"> / buổi</span>
                       )}
                     </div>
-                    <a
-                      href="#contact"
+                    <Link
+                      to="/register-course"
                       className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-colors shadow-sm ${
                         pkg.is_featured
                           ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -336,7 +336,7 @@ export default function LandingPage() {
                       }`}
                     >
                       Đăng ký ngay
-                    </a>
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -398,14 +398,14 @@ export default function LandingPage() {
                   <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-1.5 flex-shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200">
                     <div className="flex items-center gap-1 text-xs font-semibold text-gray-800 bg-white px-3 py-1.5 rounded-xl border border-gray-200/60">
                       <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      {cls.schedule_time.slice(0, 5)} · {cls.duration_min} phút
+                      {cls.schedule_time ? cls.schedule_time.slice(0, 5) : '—'} · {cls.duration_min} phút
                     </div>
-                    <a
-                      href="#contact"
+                    <Link
+                      to={`/register-course?classId=${cls.id}`}
                       className="text-xs text-red-600 hover:text-red-700 font-bold flex items-center gap-1.5 ml-auto sm:ml-0"
                     >
                       Đăng ký xếp lớp <ChevronRight className="w-4 h-4" />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               ))}

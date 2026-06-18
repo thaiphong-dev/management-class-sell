@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, BookOpen, CreditCard,
-  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X, Settings
+  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X, Settings, FileText, QrCode
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -21,6 +21,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { icon: Building2,       label: 'Cơ sở & Sân',  path: '/admin/facilities' },
     { icon: BookOpen,        label: 'Lớp học',       path: '/admin/classes' },
     { icon: CreditCard,      label: 'Gói học',       path: '/admin/packages' },
+    { icon: FileText,        label: 'Đơn đăng ký học', path: '/admin/registrations' },
     { icon: BarChart3,       label: 'Báo cáo',       path: '/admin/reports' },
     { icon: Settings,        label: 'Cấu hình trang chủ', path: '/admin/settings' },
   ],
@@ -28,6 +29,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { icon: LayoutDashboard, label: 'Dashboard',    path: '/coach/dashboard' },
     { icon: BookOpen,        label: 'Lớp của tôi',  path: '/coach/classes' },
     { icon: ClipboardList,   label: 'Điểm danh',    path: '/coach/attendance' },
+    { icon: QrCode,          label: 'Quét QR điểm danh', path: '/coach/attendance/scan' },
     { icon: TrendingUp,      label: 'Đánh giá',     path: '/coach/progress' },
   ],
   student: [

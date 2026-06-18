@@ -11,6 +11,7 @@ import AdminUsersPage      from '@/pages/admin/UsersPage'
 import AdminClassesPage    from '@/pages/admin/ClassesPage'
 import AdminPackagesPage   from '@/pages/admin/PackagesPage'
 import AdminReportsPage    from '@/pages/admin/ReportsPage'
+import AdminRegistrationsPage from '@/pages/admin/RegistrationsPage'
 // Coach pages
 import CoachDashboardPage       from '@/pages/coach/DashboardPage'
 import CoachClassesPage         from '@/pages/coach/ClassesPage'
@@ -18,6 +19,7 @@ import CoachSessionsPage        from '@/pages/coach/SessionsPage'
 import CoachAttendancePage      from '@/pages/coach/AttendancePage'
 import CoachAttendanceSheetPage from '@/pages/coach/AttendanceSheetPage'
 import CoachProgressPage        from '@/pages/coach/ProgressPage'
+import CoachScanAttendancePage  from '@/pages/coach/ScanAttendancePage'
 // Student pages
 import StudentDashboardPage  from '@/pages/student/DashboardPage'
 import StudentSchedulePage   from '@/pages/student/SchedulePage'
@@ -27,6 +29,7 @@ import StudentPackagesPage   from '@/pages/student/PackagesPage'
 // Public & Settings pages
 import LandingPage from '@/pages/public/LandingPage'
 import AdminSettingsPage from '@/pages/admin/SettingsPage'
+import RegisterCoursePage from '@/pages/public/RegisterCoursePage'
 
 function DefaultRoute() {
   const { session, profile, isLoading } = useAuthContext()
@@ -68,6 +71,12 @@ export default function App() {
               </PublicRoute>
             }
           />
+          <Route
+            path="/register-course"
+            element={
+              <RegisterCoursePage />
+            }
+          />
 
           {/* Admin */}
           <Route element={<RequireRole role="admin" />}>
@@ -76,9 +85,10 @@ export default function App() {
               <Route path="dashboard"  element={<AdminDashboardPage />} />
               <Route path="users"      element={<AdminUsersPage />} />
               <Route path="facilities" element={<AdminFacilitiesPage />} />
-              <Route path="classes"    element={<AdminClassesPage />} />
-              <Route path="packages"   element={<AdminPackagesPage />} />
-              <Route path="reports"    element={<AdminReportsPage />} />
+              <Route path="classes"       element={<AdminClassesPage />} />
+              <Route path="packages"      element={<AdminPackagesPage />} />
+              <Route path="registrations" element={<AdminRegistrationsPage />} />
+              <Route path="reports"       element={<AdminReportsPage />} />
               <Route path="settings"   element={<AdminSettingsPage />} />
             </Route>
           </Route>
@@ -92,6 +102,7 @@ export default function App() {
               <Route path="classes/:classId/sessions"                          element={<CoachSessionsPage />} />
               <Route path="classes/:classId/sessions/:sessionId/attendance"    element={<CoachAttendanceSheetPage />} />
               <Route path="attendance"                                         element={<CoachAttendancePage />} />
+              <Route path="attendance/scan"                                    element={<CoachScanAttendancePage />} />
               <Route path="progress"                                           element={<CoachProgressPage />} />
             </Route>
           </Route>
