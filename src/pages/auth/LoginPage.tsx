@@ -61,7 +61,7 @@ export default function LoginPage() {
               <line x1="10" y1="12" x2="30" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">ShuttleClass</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight text-center leading-tight">Thái Phong Badminton Class</h1>
           <p className="text-white/50 text-sm mt-1">Quản lý lớp học cầu lông</p>
         </div>
 
@@ -76,7 +76,7 @@ export default function LoginPage() {
               <input
                 {...register('email')}
                 type="email"
-                placeholder="example@shuttleclass.vn"
+                placeholder="example@gmail.com"
                 autoComplete="email"
                 className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500/60 focus:border-red-500/60 transition-all text-sm"
               />
@@ -130,7 +130,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          © 2026 ShuttleClass. Tài khoản được cấp bởi Admin.
+          © 2026 Thái Phong Badminton Class. Tài khoản được cấp bởi Admin.
         </p>
       </div>
     </div>

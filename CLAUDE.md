@@ -1,4 +1,4 @@
-# ShuttleClass — CLAUDE.md
+# Thái Phong Badminton Class — CLAUDE.md
 > Quy tắc bắt buộc cho mọi AI agent (dev, QC, fix) làm việc trên dự án này.
 > **Đọc toàn bộ file này trước khi thực hiện bất kỳ tác vụ nào.**
 
@@ -6,7 +6,7 @@
 
 ## 1. Tổng quan dự án
 
-- **Tên:** ShuttleClass — Ứng dụng quản lý lớp học cầu lông
+- **Tên:** Thái Phong Badminton Class — Ứng dụng quản lý lớp học cầu lông
 - **Tech stack:** React 18 + Vite + TypeScript · Tailwind CSS + shadcn/ui · Supabase (PostgreSQL + Auth + Realtime) · Recharts · Zustand · React Hook Form + Zod · vite-plugin-pwa
 - **Tài liệu chính:** xem thư mục `/docs/`
 - **Mockup UI:** `mockup/index.html`

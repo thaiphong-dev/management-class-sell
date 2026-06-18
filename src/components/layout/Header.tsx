@@ -29,7 +29,7 @@ function useDynamicTitle(pathname: string): string {
   const attendanceMatch = useMatch('/coach/classes/:classId/sessions/:sessionId/attendance')
   if (attendanceMatch) return 'Điểm danh buổi học'
   if (sessionsMatch)   return 'Buổi học'
-  return PAGE_TITLES[pathname] ?? 'ShuttleClass'
+  return PAGE_TITLES[pathname] ?? 'Thái Phong Badminton Class'
 }
 
 function timeAgo(isoString: string): string {

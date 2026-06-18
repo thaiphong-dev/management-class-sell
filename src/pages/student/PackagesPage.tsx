@@ -25,6 +25,7 @@ interface AvailablePackage {
   validity_days: number
   price: number
   description: string | null
+  coaching_type: 'none' | '1-1' | 'group'
 }
 
 interface PackageHistory {
@@ -37,6 +38,7 @@ interface PackageHistory {
   status: 'pending_activation' | 'active' | 'expired' | 'depleted'
   sessionsTotal: number | null
   sessionsRemaining: number | null
+  coachingType: 'none' | '1-1' | 'group'
 }
 
 const STATUS_CONFIG: Record<PackageHistory['status'], { label: string; className: string }> = {
@@ -79,12 +81,12 @@ export default function StudentPackagesPage() {
           .eq('student_id', student.id),
         supabase
           .from('student_packages')
-          .select('id, purchased_at, activated_at, expires_at, status, sessions_total, sessions_remaining, packages(name, package_type)')
+          .select('id, purchased_at, activated_at, expires_at, status, sessions_total, sessions_remaining, packages(name, package_type, coaching_type)')
           .eq('student_id', student.id)
           .order('purchased_at', { ascending: false }),
         supabase
           .from('packages')
-          .select('id, name, package_type, sessions_count, validity_days, price, description')
+          .select('id, name, package_type, sessions_count, validity_days, price, description, coaching_type')
           .eq('status', 'active')
           .order('sort_order')
           .order('price'),
@@ -127,6 +129,7 @@ export default function StudentPackagesPage() {
           status:            r.status as PackageHistory['status'],
           sessionsTotal:     r.sessions_total as number | null,
           sessionsRemaining: r.sessions_remaining as number | null,
+          coachingType:      (pkg?.coaching_type as 'none' | '1-1' | 'group') ?? 'none',
         }
       })
 
@@ -141,6 +144,7 @@ export default function StudentPackagesPage() {
             validity_days:  r.validity_days as number,
             price:          Number(r.price),
             description:    r.description as string | null,
+            coaching_type:  (r.coaching_type as 'none' | '1-1' | 'group') ?? 'none',
           }
         }))
       }
@@ -190,7 +194,15 @@ export default function StudentPackagesPage() {
               <div key={pkg.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900">{pkg.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900">{pkg.name}</p>
+                      {pkg.coaching_type === '1-1' && (
+                        <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Kèm 1-1</span>
+                      )}
+                      {pkg.coaching_type === 'group' && (
+                        <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">Kèm nhóm</span>
+                      )}
+                    </div>
                     {pkg.description && (
                       <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{pkg.description}</p>
                     )}
@@ -203,7 +215,7 @@ export default function StudentPackagesPage() {
                 </div>
 
                 <div className="flex gap-3 text-xs text-gray-500">
-                  {pkg.package_type === 'session' && pkg.sessions_count !== null && (
+                  {pkg.package_type === 'session' && pkg.coaching_type === 'none' && pkg.sessions_count !== null && (
                     <span className="flex items-center gap-1">
                       <Repeat2 className="w-3.5 h-3.5 text-blue-500" />
                       {pkg.sessions_count} buổi
@@ -216,7 +228,9 @@ export default function StudentPackagesPage() {
                 </div>
 
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
-                  <span className="text-lg font-bold text-primary-700">{formatCurrency(pkg.price)}</span>
+                  <span className="text-lg font-bold text-primary-700">
+                    {pkg.coaching_type !== 'none' ? `${formatCurrency(pkg.price)} / buổi` : formatCurrency(pkg.price)}
+                  </span>
                   <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg">Liên hệ Admin</span>
                 </div>
               </div>
@@ -250,8 +264,16 @@ export default function StudentPackagesPage() {
                       <CreditCard className="w-4 h-4 text-gray-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{h.packageName}</p>
-                      <p className="text-xs text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 truncate">{h.packageName}</p>
+                        {h.coachingType === '1-1' && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium">1-1</span>
+                        )}
+                        {h.coachingType === 'group' && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded-full font-medium font-semibold">Nhóm</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
                         Mua: {formatDate(h.purchasedAt)}
                         {h.expiresAt ? ` · HH: ${formatDate(h.expiresAt)}` : ''}
                       </p>

@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Tổng quan</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Thống kê hệ thống ShuttleClass</p>
+        <p className="text-sm text-gray-500 mt-0.5">Thống kê hệ thống Thái Phong Badminton Class</p>
       </div>
 
       {/* KPI cards */}

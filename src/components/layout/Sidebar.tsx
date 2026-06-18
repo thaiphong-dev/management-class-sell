@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, BookOpen, CreditCard,
-  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X,
+  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X, Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -22,6 +22,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { icon: BookOpen,        label: 'Lớp học',       path: '/admin/classes' },
     { icon: CreditCard,      label: 'Gói học',       path: '/admin/packages' },
     { icon: BarChart3,       label: 'Báo cáo',       path: '/admin/reports' },
+    { icon: Settings,        label: 'Cấu hình trang chủ', path: '/admin/settings' },
   ],
   coach: [
     { icon: LayoutDashboard, label: 'Dashboard',    path: '/coach/dashboard' },
@@ -55,7 +56,7 @@ export function Sidebar() {
 
   const handleSignOut = async () => {
     await signOut()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   const sidebarContent = (
@@ -76,7 +77,7 @@ export function Sidebar() {
           </svg>
         </div>
         <div className="min-w-0">
-          <p className="font-bold text-white text-sm leading-tight">ShuttleClass</p>
+          <p className="font-bold text-white text-sm leading-tight">Thái Phong Badminton Class</p>
           <p className="text-white/40 text-xs truncate">{ROLE_LABELS[profile.role]}</p>
         </div>
 

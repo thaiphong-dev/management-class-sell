@@ -86,18 +86,18 @@ async function runSQL(projectRef, accessToken, sql) {
 // ─── Test users definition ────────────────────────────────────────────────────
 const TEST_USERS = [
   {
-    email:    'admin@shuttleclass.vn',
-    password: 'Admin@123',
-    fullName: 'Admin ShuttleClass',
+    email:    'thaiphong.dev@gmail.com',
+    password: 'LyLinh196465',
+    fullName: 'Admin Thái Phong Badminton Class',
     role:     'admin',
     phone:    '0901234567',
   },
   {
-    email:    'coach1@shuttleclass.vn',
-    password: 'Coach@123',
-    fullName: 'Nguyễn Văn Hùng',
+    email:    'tuthaiphong600@gmail.com',
+    password: 'ttphong1101',
+    fullName: 'Từ Thái Phong',
     role:     'coach',
-    phone:    '0912345678',
+    phone:    '0377612701',
     coachData: {
       specialty: 'Đánh đơn nam',
       experience_years: 5,
@@ -105,11 +105,11 @@ const TEST_USERS = [
     },
   },
   {
-    email:    'coach2@shuttleclass.vn',
-    password: 'Coach@123',
-    fullName: 'Trần Thị Mai',
+    email:    'hanie@gmail.com',
+    password: 'haokhongnho',
+    fullName: 'Nguyễn Thị Như Hảo',
     role:     'coach',
-    phone:    '0923456789',
+    phone:    '0967273066',
     coachData: {
       specialty: 'Đánh đôi',
       experience_years: 3,
@@ -200,11 +200,11 @@ async function main() {
   console.log('✅  Seed users hoàn thành!')
   console.log('')
   console.log('📋  Test accounts:')
-  console.log('   admin@shuttleclass.vn   / Admin@123')
-  console.log('   coach1@shuttleclass.vn  / Coach@123')
-  console.log('   coach2@shuttleclass.vn  / Coach@123')
-  console.log('   student1@shuttleclass.vn / Student@123')
-  console.log('   student2@shuttleclass.vn / Student@123')
+  console.log('   thaiphong.dev@gmail.com   / LyLinh196465')
+  console.log('   tuthaiphong600@gmail.com  / ttphong1101')
+  console.log('   hanie@gmail.com           / haokhongnho')
+  console.log('   student1@shuttleclass.vn  / Student@123')
+  console.log('   student2@shuttleclass.vn  / Student@123')
 }
 
 main().catch(err => {

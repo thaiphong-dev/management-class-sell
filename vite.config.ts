@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'ShuttleClass',
-        short_name: 'ShuttleClass',
+        name: 'Thái Phong Badminton Class',
+        short_name: 'Thái Phong Badminton',
         description: 'Ứng dụng quản lý lớp học cầu lông',
         theme_color: '#b91c1c',
         background_color: '#ffffff',

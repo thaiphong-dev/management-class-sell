@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, CreditCard, Users, Zap, ToggleLeft, ToggleRight, Search } from 'lucide-react'
+import { Plus, CreditCard, Users, Zap, ToggleLeft, ToggleRight, Search, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
@@ -9,11 +9,15 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Package } from '@/types'
-
+ 
 // ─── types ────────────────────────────────────────────────────────────────────
-
+ 
 interface StudentPackageRow {
   id: string
   student_id: string
@@ -28,45 +32,48 @@ interface StudentPackageRow {
   studentName: string
   studentPhone: string | null
 }
-
+ 
 interface StudentOption { id: string; name: string; phone: string | null }
-
+ 
 interface PkgForm {
   name: string; package_type: 'session' | 'monthly'
   sessions_count: string; validity_days: string
   price: string; description: string
   is_featured: boolean; status: 'active' | 'inactive'
+  coaching_type: 'none' | '1-1' | 'group'
 }
-
+ 
 interface AssignForm {
   student_id: string; package_id: string
   amount: string; payment_method: 'cash' | 'transfer' | 'card' | 'other'
   activate_now: boolean
+  coaching_sessions: string
 }
-
+ 
 const EMPTY_PKG: PkgForm = {
   name: '', package_type: 'session', sessions_count: '12',
   validity_days: '60', price: '1000000', description: '',
-  is_featured: false, status: 'active',
+  is_featured: false, status: 'active', coaching_type: 'none',
 }
 const EMPTY_ASSIGN: AssignForm = {
   student_id: '', package_id: '', amount: '',
   payment_method: 'cash', activate_now: false,
+  coaching_sessions: '10',
 }
-
+ 
 const SP_STATUS_CFG: Record<string, { label: string; className: string }> = {
   pending_activation: { label: 'Chờ kích hoạt', className: 'bg-gray-100 text-gray-600' },
   active:             { label: 'Đang dùng',      className: 'bg-green-100 text-green-700' },
   expired:            { label: 'Hết hạn',         className: 'bg-red-100 text-red-700' },
   depleted:           { label: 'Hết buổi',        className: 'bg-orange-100 text-orange-700' },
 }
-
+ 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: 'Tiền mặt', transfer: 'Chuyển khoản', card: 'Thẻ', other: 'Khác',
 }
-
+ 
 // ─── component ────────────────────────────────────────────────────────────────
-
+ 
 export default function PackagesPage() {
   const { profile } = useAuthContext()
   const { toast } = useToast()
@@ -77,15 +84,16 @@ export default function PackagesPage() {
   const [saving, setSaving] = useState(false)
   const [spFilter, setSpFilter] = useState<string>('all')
   const [spSearch, setSpSearch] = useState('')
-
+ 
   const [pkgDialog, setPkgDialog] = useState<{ open: boolean; id?: string; form: PkgForm }>({
     open: false, form: { ...EMPTY_PKG },
   })
   const [assignDialog, setAssignDialog] = useState(false)
   const [assignForm, setAssignForm] = useState<AssignForm>({ ...EMPTY_ASSIGN })
-
+  const [deleteConfirmPkgId, setDeleteConfirmPkgId] = useState<string | null>(null)
+ 
   // ── load ────────────────────────────────────────────────────────────────────
-
+ 
   const loadPackages = useCallback(async () => {
     const { data, error } = await supabase
       .from('packages').select('*').order('sort_order').order('name')
@@ -96,7 +104,7 @@ export default function PackagesPage() {
       setPackages((data ?? []) as Package[])
     }
   }, [toast])
-
+ 
   const loadStudentPackages = useCallback(async () => {
     const { data, error } = await supabase
       .from('student_packages')
@@ -107,13 +115,13 @@ export default function PackagesPage() {
         students(id, user_id, profiles(full_name, phone))
       `)
       .order('purchased_at', { ascending: false })
-
+ 
     if (error) {
       console.error('Failed to load student packages:', error.message)
       toast({ title: 'Lỗi tải thẻ học viên', description: error.message, variant: 'destructive' })
       return
     }
-
+ 
     setStudentPkgs(((data ?? []) as unknown[]).map((raw: unknown) => {
       const r = raw as Record<string, unknown>
       const pkg = r.packages as { name?: string; package_type?: string } | null
@@ -135,14 +143,14 @@ export default function PackagesPage() {
       }
     }))
   }, [toast])
-
+ 
   const loadStudents = useCallback(async () => {
     const { data, error } = await supabase
       .from('students')
       .select('id, profiles(full_name, phone)')
       .eq('status', 'active')
       .order('id')
-
+ 
     if (error) {
       console.error('Failed to load students:', error.message)
       toast({ title: 'Lỗi tải danh sách học viên', description: error.message, variant: 'destructive' })
@@ -154,7 +162,7 @@ export default function PackagesPage() {
       return { id: r.id as string, name: p?.full_name ?? '—', phone: p?.phone ?? null }
     }))
   }, [toast])
-
+ 
   useEffect(() => {
     Promise.all([loadPackages(), loadStudentPackages(), loadStudents()])
       .finally(() => setIsLoading(false))
@@ -170,12 +178,13 @@ export default function PackagesPage() {
     const payload = {
       name:           f.name.trim(),
       package_type:   f.package_type,
-      sessions_count: f.package_type === 'session' ? parseInt(f.sessions_count) || null : null,
+      sessions_count: f.coaching_type !== 'none' ? 1 : (f.package_type === 'session' ? parseInt(f.sessions_count) || null : null),
       validity_days:  parseInt(f.validity_days) || 30,
       price:          parseFloat(f.price.replace(/[^0-9.]/g, '')) || 0,
       description:    f.description.trim() || null,
       is_featured:    f.is_featured,
       status:         f.status,
+      coaching_type:  f.coaching_type,
     }
 
     const { error } = pkgDialog.id
@@ -205,6 +214,29 @@ export default function PackagesPage() {
     }
   }
 
+  async function deletePackage(id: string) {
+    setSaving(true)
+    const { error } = await supabase
+      .from('packages')
+      .delete()
+      .eq('id', id)
+    if (error) {
+      console.error('Failed to delete package:', error.message)
+      toast({
+        title: 'Lỗi xóa gói học',
+        description: error.message.includes('foreign key') || error.message.includes('violates foreign key')
+          ? 'Không thể xóa gói học này vì đã có học viên đăng ký sử dụng.'
+          : error.message,
+        variant: 'destructive',
+      })
+    } else {
+      toast({ title: 'Đã xóa gói học thành công' })
+      await loadPackages()
+    }
+    setSaving(false)
+    setDeleteConfirmPkgId(null)
+  }
+
   // ── assign package ───────────────────────────────────────────────────────────
 
   async function assignPackage() {
@@ -219,11 +251,16 @@ export default function PackagesPage() {
       ? new Date(Date.now() + (selectedPkg.validity_days * 24 * 60 * 60 * 1000)).toISOString()
       : null
 
+    const isCoaching = selectedPkg && selectedPkg.coaching_type && selectedPkg.coaching_type !== 'none'
+    const sessionsCount = isCoaching 
+      ? (parseInt(f.coaching_sessions) || 1) 
+      : (selectedPkg?.package_type === 'session' ? selectedPkg.sessions_count : null)
+
     const spPayload = {
       student_id:         f.student_id,
       package_id:         f.package_id,
-      sessions_total:     selectedPkg?.package_type === 'session' ? selectedPkg.sessions_count : null,
-      sessions_remaining: selectedPkg?.package_type === 'session' ? selectedPkg.sessions_count : null,
+      sessions_total:     sessionsCount,
+      sessions_remaining: sessionsCount,
       status:             f.activate_now ? 'active' : 'pending_activation',
       activated_at:       activatedAt,
       expires_at:         expiresAt,
@@ -314,11 +351,31 @@ export default function PackagesPage() {
   // Pre-fill amount when package selected
   function onSelectPackage(pkgId: string) {
     const pkg = packages.find(p => p.id === pkgId)
+    const isCoaching = pkg && pkg.coaching_type && pkg.coaching_type !== 'none'
+    const sessions = isCoaching ? 10 : 1
+    const amount = pkg 
+      ? String(isCoaching ? Number(pkg.price) * sessions : pkg.price) 
+      : ''
+    
     setAssignForm(prev => ({
       ...prev,
       package_id: pkgId,
-      amount: pkg ? String(pkg.price) : '',
+      amount: amount,
+      coaching_sessions: isCoaching ? '10' : '1',
     }))
+  }
+
+  function onChangeCoachingSessions(sessionsVal: string) {
+    const sessions = parseInt(sessionsVal) || 0
+    setAssignForm(prev => {
+      const pkg = packages.find(p => p.id === prev.package_id)
+      const price = pkg ? Number(pkg.price) : 0
+      return {
+        ...prev,
+        coaching_sessions: sessionsVal,
+        amount: String(price * sessions),
+      }
+    })
   }
 
   // ── render ───────────────────────────────────────────────────────────────────
@@ -366,12 +423,20 @@ export default function PackagesPage() {
                       {pkg.is_featured && (
                         <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">Nổi bật</span>
                       )}
+                      {pkg.coaching_type === '1-1' && (
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Kèm 1-1</span>
+                      )}
+                      {pkg.coaching_type === 'group' && (
+                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">Kèm nhóm</span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {pkg.package_type === 'session'
-                        ? `${pkg.sessions_count} buổi / ${pkg.validity_days} ngày`
-                        : `${pkg.validity_days} ngày · Không giới hạn buổi`}
-                      {' · '}{formatCurrency(Number(pkg.price))}
+                      {pkg.coaching_type && pkg.coaching_type !== 'none'
+                        ? `${formatCurrency(Number(pkg.price))} / buổi · Hạn ${pkg.validity_days} ngày`
+                        : (pkg.package_type === 'session'
+                            ? `${pkg.sessions_count} buổi / ${pkg.validity_days} ngày`
+                            : `${pkg.validity_days} ngày · Không giới hạn buổi`)}
+                      {pkg.coaching_type === 'none' && ` · ${formatCurrency(Number(pkg.price))}`}
                     </p>
                   </div>
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
@@ -388,6 +453,7 @@ export default function PackagesPage() {
                       description: pkg.description ?? '',
                       is_featured: pkg.is_featured ?? false,
                       status: pkg.status as 'active' | 'inactive',
+                      coaching_type: pkg.coaching_type ?? 'none',
                     }})}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600 transition-colors"
                   >
@@ -401,6 +467,13 @@ export default function PackagesPage() {
                     {pkg.status === 'active'
                       ? <ToggleRight className="w-5 h-5 text-green-500" />
                       : <ToggleLeft className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirmPkgId(pkg.id)}
+                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                    title="Xóa gói học"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -490,24 +563,63 @@ export default function PackagesPage() {
 
       {/* ── Package CRUD Dialog ───────────────────────────────────────────────── */}
       <Dialog open={pkgDialog.open} onOpenChange={open => !open && setPkgDialog({ open: false, form: { ...EMPTY_PKG } })}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{pkgDialog.id ? 'Chỉnh sửa gói học' : 'Thêm gói học mới'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-1">
-            {([
-              { key: 'name', label: 'Tên gói *', type: 'text', placeholder: 'VD: Gói 12 buổi' },
-              { key: 'price', label: 'Giá (VND) *', type: 'number', placeholder: '1000000' },
-              { key: 'validity_days', label: 'Hiệu lực (ngày) *', type: 'number', placeholder: '60' },
-            ] as const).map(f => (
-              <div key={f.key}>
-                <Label>{f.label}</Label>
-                <Input className="mt-1" type={f.type} placeholder={f.placeholder}
-                  value={pkgDialog.form[f.key]}
-                  onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, [f.key]: e.target.value } }))}
-                />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+            {/* Tên gói */}
+            <div className="col-span-1 sm:col-span-2">
+              <Label>Tên gói *</Label>
+              <Input className="mt-1" placeholder="VD: Gói 12 buổi"
+                value={pkgDialog.form.name}
+                onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, name: e.target.value } }))}
+              />
+            </div>
+
+            {/* Giá (VND) */}
+            <div>
+              <Label>Giá (VND) *</Label>
+              <Input className="mt-1" type="number" placeholder="1000000"
+                value={pkgDialog.form.price}
+                onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, price: e.target.value } }))}
+              />
+            </div>
+
+            {/* Hiệu lực (ngày) */}
+            <div>
+              <Label>Hiệu lực (ngày) *</Label>
+              <Input className="mt-1" type="number" placeholder="60"
+                value={pkgDialog.form.validity_days}
+                onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, validity_days: e.target.value } }))}
+              />
+            </div>
+
+            {/* Hình thức học */}
+            <div>
+              <Label>Hình thức học</Label>
+              <Select value={pkgDialog.form.coaching_type}
+                onValueChange={v => {
+                  const val = v as 'none' | '1-1' | 'group';
+                  setPkgDialog(prev => ({
+                    ...prev,
+                    form: {
+                      ...prev.form,
+                      coaching_type: val,
+                      sessions_count: val !== 'none' ? '1' : prev.form.sessions_count
+                    }
+                  }));
+                }}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Lớp thường (theo nhóm)</SelectItem>
+                  <SelectItem value="1-1">Dạy kèm 1-1</SelectItem>
+                  <SelectItem value="group">Dạy kèm nhóm</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Loại gói */}
             <div>
               <Label>Loại gói</Label>
               <Select value={pkgDialog.form.package_type}
@@ -519,22 +631,31 @@ export default function PackagesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {pkgDialog.form.package_type === 'session' && (
+
+            {/* Số buổi (chỉ hiện khi Loại gói là Theo buổi và Hình thức học là Lớp thường) */}
+            {pkgDialog.form.package_type === 'session' && pkgDialog.form.coaching_type === 'none' ? (
               <div>
                 <Label>Số buổi</Label>
                 <Input className="mt-1" type="number" value={pkgDialog.form.sessions_count}
                   onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, sessions_count: e.target.value } }))} />
               </div>
+            ) : (
+              // Spacer to keep layout balanced when Số buổi is hidden
+              <div className="hidden sm:block" />
             )}
-            <div>
+
+            {/* Gói nổi bật */}
+            <div className="flex items-center gap-3 pt-2">
+              <input type="checkbox" id="featured" checked={pkgDialog.form.is_featured}
+                onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, is_featured: e.target.checked } }))} />
+              <Label htmlFor="featured" className="cursor-pointer">Gói nổi bật</Label>
+            </div>
+
+            {/* Mô tả */}
+            <div className="col-span-1 sm:col-span-2">
               <Label>Mô tả</Label>
               <Input className="mt-1" placeholder="Tùy chọn" value={pkgDialog.form.description}
                 onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, description: e.target.value } }))} />
-            </div>
-            <div className="flex items-center gap-3">
-              <input type="checkbox" id="featured" checked={pkgDialog.form.is_featured}
-                onChange={e => setPkgDialog(prev => ({ ...prev, form: { ...prev.form, is_featured: e.target.checked } }))} />
-              <Label htmlFor="featured">Gói nổi bật</Label>
             </div>
           </div>
           <DialogFooter>
@@ -583,10 +704,20 @@ export default function PackagesPage() {
             </div>
             {selectedPkg && (
               <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                {selectedPkg.package_type === 'session'
-                  ? `${selectedPkg.sessions_count} buổi / ${selectedPkg.validity_days} ngày`
-                  : `${selectedPkg.validity_days} ngày không giới hạn`}
+                {selectedPkg.coaching_type !== 'none'
+                  ? `Dạy kèm · Hạn ${selectedPkg.validity_days} ngày`
+                  : (selectedPkg.package_type === 'session'
+                      ? `${selectedPkg.sessions_count} buổi / ${selectedPkg.validity_days} ngày`
+                      : `${selectedPkg.validity_days} ngày không giới hạn`)}
               </p>
+            )}
+            {selectedPkg && selectedPkg.coaching_type !== 'none' && (
+              <div>
+                <Label>Số lượng buổi mua *</Label>
+                <Input className="mt-1" type="number" min="1"
+                  value={assignForm.coaching_sessions}
+                  onChange={e => onChangeCoachingSessions(e.target.value)} />
+              </div>
             )}
             <div>
               <Label>Số tiền nhận (VND) *</Label>
@@ -624,6 +755,28 @@ export default function PackagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Package */}
+      <AlertDialog open={!!deleteConfirmPkgId} onOpenChange={open => !open && setDeleteConfirmPkgId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa gói học</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa gói học này? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirmPkgId && deletePackage(deleteConfirmPkgId)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={saving}
+            >
+              {saving ? 'Đang xóa...' : 'Xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

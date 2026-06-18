@@ -234,6 +234,42 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_settings: {
+        Row: {
+          id: string
+          hero_title: string
+          hero_subtitle: string
+          center_intro: string
+          contact_phone: string
+          contact_email: string
+          zalo_url: string
+          facebook_url: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          hero_title?: string
+          hero_subtitle?: string
+          center_intro?: string
+          contact_phone?: string
+          contact_email?: string
+          zalo_url?: string
+          facebook_url?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          hero_title?: string
+          hero_subtitle?: string
+          center_intro?: string
+          contact_phone?: string
+          contact_email?: string
+          zalo_url?: string
+          facebook_url?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       packages: {
         Row: {
           id: string
@@ -246,6 +282,7 @@ export type Database = {
           is_featured: boolean
           sort_order: number
           status: 'active' | 'inactive'
+          coaching_type: 'none' | '1-1' | 'group'
           created_at: string
         }
         Insert: {
@@ -259,6 +296,7 @@ export type Database = {
           is_featured?: boolean
           sort_order?: number
           status?: 'active' | 'inactive'
+          coaching_type?: 'none' | '1-1' | 'group'
           created_at?: string
         }
         Update: {
@@ -272,6 +310,7 @@ export type Database = {
           is_featured?: boolean
           sort_order?: number
           status?: 'active' | 'inactive'
+          coaching_type?: 'none' | '1-1' | 'group'
           created_at?: string
         }
         Relationships: []

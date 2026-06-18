@@ -30,7 +30,7 @@ test.describe('Auth – Login & Redirect', () => {
 
   test('A4 – Wrong password shows error message', async ({ page }) => {
     await page.goto('/login')
-    await page.getByPlaceholder('example@shuttleclass.vn').fill(ACCOUNTS.admin.email)
+    await page.getByPlaceholder('example@gmail.com').fill(ACCOUNTS.admin.email)
     await page.getByPlaceholder('••••••••').fill('WrongPassword999!')
     await page.getByRole('button', { name: 'Đăng nhập' }).click()
     await expect(page.getByText('Email hoặc mật khẩu không đúng')).toBeVisible({ timeout: 8_000 })
@@ -42,7 +42,7 @@ test.describe('Auth – Login & Redirect', () => {
     // Note: input type="email" triggers browser native validation, preventing form submission
     // Zod validation only runs after browser allows the submit event to fire
     await page.goto('/login')
-    await page.getByPlaceholder('example@shuttleclass.vn').fill('not-an-email')
+    await page.getByPlaceholder('example@gmail.com').fill('not-an-email')
     await page.getByPlaceholder('••••••••').fill('password123')
     await page.getByRole('button', { name: 'Đăng nhập' }).click()
     // Browser prevents navigation — we stay on /login
@@ -53,7 +53,7 @@ test.describe('Auth – Login & Redirect', () => {
 
   test('A4c – Short password shows validation error', async ({ page }) => {
     await page.goto('/login')
-    await page.getByPlaceholder('example@shuttleclass.vn').fill(ACCOUNTS.admin.email)
+    await page.getByPlaceholder('example@gmail.com').fill(ACCOUNTS.admin.email)
     await page.getByPlaceholder('••••••••').fill('abc')
     await page.getByRole('button', { name: 'Đăng nhập' }).click()
     await expect(page.getByText('Mật khẩu tối thiểu 6 ký tự')).toBeVisible()
@@ -96,10 +96,10 @@ test.describe('Auth – Login & Redirect', () => {
     await expect(page).toHaveURL(/\/admin\/dashboard/)
   })
 
-  test('A8 – Logout clears session and redirects to /login', async ({ page }) => {
+  test('A8 – Logout clears session and redirects to landing page or login page', async ({ page }) => {
     await loginAs(page, 'admin')
     await logout(page)
-    await expect(page).toHaveURL(/\/login/)
+    expect(page.url().endsWith('/') || page.url().endsWith('/login')).toBe(true)
     // Session must be cleared: visiting dashboard redirects back to login
     await page.goto('/admin/dashboard')
     await expect(page).toHaveURL(/\/login/)
@@ -131,7 +131,7 @@ test.describe('Layout – Sidebar & Responsive', () => {
     await loginAs(page, 'admin')
     // Desktop sidebar (aside.hidden.lg:flex) should be visible
     await expect(page.locator('aside').first()).toBeVisible()
-    await expect(page.getByText('ShuttleClass').first()).toBeVisible()
+    await expect(page.getByText('Thái Phong Badminton Class').first()).toBeVisible()
   })
 
   test('U1b – Mobile (375px): sidebar is hidden, hamburger is visible', async ({ page }) => {
@@ -175,9 +175,9 @@ test.describe('Layout – Sidebar & Responsive', () => {
     await expect(page.locator('body')).not.toContainText('TypeError')
   })
 
-  test('U5 – ShuttleClass logo and brand name visible in sidebar', async ({ page }) => {
+  test('U5 – Thái Phong Badminton Class logo and brand name visible in sidebar', async ({ page }) => {
     await loginAs(page, 'admin')
-    await expect(page.getByText('ShuttleClass').first()).toBeVisible()
+    await expect(page.getByText('Thái Phong Badminton Class').first()).toBeVisible()
     // Role label shown in sidebar
     await expect(page.getByText('Quản trị viên').first()).toBeVisible()
   })

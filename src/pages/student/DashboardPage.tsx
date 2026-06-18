@@ -227,7 +227,7 @@ export default function StudentDashboardPage() {
         <h2 className="text-xl font-bold text-gray-900">
           Xin chào, {profile?.full_name} 👋
         </h2>
-        <p className="text-sm text-gray-500 mt-0.5">Chào mừng trở lại ShuttleClass</p>
+        <p className="text-sm text-gray-500 mt-0.5">Chào mừng trở lại Thái Phong Badminton Class</p>
       </div>
 
       {/* Active membership card */}

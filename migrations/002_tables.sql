@@ -210,7 +210,10 @@ create table if not exists notifications (
     'card_expired',
     'session_cancelled',
     'card_assigned',
-    'general'
+    'general',
+    'class_enrolled',
+    'package_grant',
+    'session_cancel'
   )),
   read_at     timestamptz,
   metadata    jsonb,

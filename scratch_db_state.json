@@ -1,0 +1,366 @@
+{
+  "facilities": [
+    {
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "Sân cầu lông Quân Y Viện 13",
+      "address": "Bệnh viện Quân Y 13",
+      "description": "Trung tâm cầu lông chuyên nghiệp tại trung tâm thành phố",
+      "phone": "0377612701",
+      "status": "active",
+      "created_at": "2026-05-24 04:00:07.098811+00"
+    },
+    {
+      "id": "5da30a3c-e941-406a-a96b-b2e1863fcec0",
+      "name": "Cơ sở F2 [E2E-1781776277985]",
+      "address": null,
+      "description": null,
+      "phone": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:51:18.379876+00"
+    }
+  ],
+  "courts": [
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "facility_id": "10000000-0000-0000-0000-000000000001",
+      "name": "Sân 1",
+      "court_number": 1,
+      "status": "available",
+      "created_at": "2026-05-24 04:00:07.098811+00"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "facility_id": "10000000-0000-0000-0000-000000000001",
+      "name": "Sân 2",
+      "court_number": 2,
+      "status": "available",
+      "created_at": "2026-05-24 04:00:07.098811+00"
+    }
+  ],
+  "packages": [
+    {
+      "id": "30000000-0000-0000-0000-000000000006",
+      "name": "Khóa 2 buổi/tuần",
+      "package_type": "monthly",
+      "sessions_count": null,
+      "validity_days": 30,
+      "price": "550000",
+      "description": "Học 2 buổi 1 tuần",
+      "is_featured": true,
+      "sort_order": 6,
+      "status": "active",
+      "created_at": "2026-06-18 08:55:22.228402+00",
+      "coaching_type": "none"
+    },
+    {
+      "id": "30000000-0000-0000-0000-000000000005",
+      "name": "Khóa 3 buổi/tuần",
+      "package_type": "monthly",
+      "sessions_count": null,
+      "validity_days": 30,
+      "price": "750000",
+      "description": "Học 3 buổi 1 tuần",
+      "is_featured": true,
+      "sort_order": 5,
+      "status": "active",
+      "created_at": "2026-06-18 08:55:22.228402+00",
+      "coaching_type": "none"
+    },
+    {
+      "id": "e3b0d681-ba51-4438-8c1a-7501d91f9e77",
+      "name": "Kèm 1-1, hoặc hội nhóm",
+      "package_type": "session",
+      "sessions_count": 1,
+      "validity_days": 60,
+      "price": "200000",
+      "description": "Giá trên là giá cho 1 buổi tập, không bao gồm tiền sân",
+      "is_featured": false,
+      "sort_order": 0,
+      "status": "active",
+      "created_at": "2026-06-18 09:17:32.40462+00",
+      "coaching_type": "1-1"
+    }
+  ],
+  "classes": [
+    {
+      "id": "40000000-0000-0000-0000-000000000002",
+      "name": "Lớp 19h30 - 21h",
+      "coach_id": "f0df1ccd-5efb-43bd-a67a-fd91b9a8631c",
+      "facility_id": "10000000-0000-0000-0000-000000000001",
+      "court_id": "20000000-0000-0000-0000-000000000001",
+      "max_students": 15,
+      "skill_level": "intermediate",
+      "schedule_days": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "schedule_time": "19:30:00",
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 08:55:22.228402+00"
+    },
+    {
+      "id": "69d35fc3-11cf-4440-aabc-72f23fc0683a",
+      "name": "Lớp E2E Basic [E2E-1781776391430]",
+      "coach_id": null,
+      "facility_id": null,
+      "court_id": null,
+      "max_students": 12,
+      "skill_level": "all",
+      "schedule_days": null,
+      "schedule_time": null,
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:53:12.670775+00"
+    },
+    {
+      "id": "8df0e748-2b7b-4fbb-ac53-25f0f64ac0d0",
+      "name": "Lớp E2E Full [E2E-1781776397288]",
+      "coach_id": null,
+      "facility_id": null,
+      "court_id": null,
+      "max_students": 12,
+      "skill_level": "all",
+      "schedule_days": [
+        "mon",
+        "wed",
+        "fri"
+      ],
+      "schedule_time": "08:00:00",
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:53:18.24315+00"
+    },
+    {
+      "id": "40000000-0000-0000-0000-000000000001",
+      "name": "Lớp 18h - 19h30",
+      "coach_id": "f0df1ccd-5efb-43bd-a67a-fd91b9a8631c",
+      "facility_id": "10000000-0000-0000-0000-000000000001",
+      "court_id": "20000000-0000-0000-0000-000000000001",
+      "max_students": 15,
+      "skill_level": "beginner",
+      "schedule_days": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "schedule_time": "18:00:00",
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 08:55:22.228402+00"
+    },
+    {
+      "id": "2d3320ed-21a3-43ba-90aa-c89e11e6ae9f",
+      "name": "Lớp Enroll [E2E-1781776405059]",
+      "coach_id": null,
+      "facility_id": null,
+      "court_id": null,
+      "max_students": 12,
+      "skill_level": "all",
+      "schedule_days": null,
+      "schedule_time": null,
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:53:25.651014+00"
+    },
+    {
+      "id": "d61c3b04-276c-4d5c-b85d-16138d37eabd",
+      "name": "Lớp Unenroll [E2E-1781776410586]",
+      "coach_id": null,
+      "facility_id": null,
+      "court_id": null,
+      "max_students": 12,
+      "skill_level": "all",
+      "schedule_days": null,
+      "schedule_time": null,
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:53:31.070096+00"
+    },
+    {
+      "id": "02163a60-072a-41e7-b399-2bbf3f128f8b",
+      "name": "Lớp Đã Sửa [E2E-1781776416793]",
+      "coach_id": null,
+      "facility_id": null,
+      "court_id": null,
+      "max_students": 12,
+      "skill_level": "all",
+      "schedule_days": null,
+      "schedule_time": null,
+      "duration_min": 90,
+      "description": null,
+      "status": "active",
+      "created_at": "2026-06-18 09:53:37.212262+00"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "9d54a6ee-c7b5-4f39-b684-19b409199429",
+      "full_name": "Admin ShuttleClass",
+      "phone": "0901234567",
+      "avatar_url": null,
+      "role": "admin",
+      "created_at": "2026-05-24 04:01:06.423881+00",
+      "updated_at": "2026-05-24 04:01:07.317953+00"
+    },
+    {
+      "id": "74229c6b-24da-45fd-874e-f9f21591eabe",
+      "full_name": "Quang Huy TMA",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:22.805232+00",
+      "updated_at": "2026-06-18 08:55:22.805232+00"
+    },
+    {
+      "id": "4ed1e86b-e94d-4f1f-9874-0b02e24c7bdd",
+      "full_name": "Anh Hưng TMA",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:25.872178+00",
+      "updated_at": "2026-06-18 08:55:25.872178+00"
+    },
+    {
+      "id": "e96025f9-c25a-4234-901e-b6fdc80f5751",
+      "full_name": "Uyên Nhi TMA",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:28.997391+00",
+      "updated_at": "2026-06-18 08:55:28.997391+00"
+    },
+    {
+      "id": "913976a6-a2fb-4369-b46d-29c0f842f0b0",
+      "full_name": "Đình Kha TMA",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:32.494071+00",
+      "updated_at": "2026-06-18 08:55:32.494071+00"
+    },
+    {
+      "id": "b2fe5664-2619-4fd7-9410-a32873884ce7",
+      "full_name": "Lê Phương TMA",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:35.539483+00",
+      "updated_at": "2026-06-18 08:55:35.539483+00"
+    },
+    {
+      "id": "8aa4420d-191b-43c7-b000-082af91b3071",
+      "full_name": "Mai Vy",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:38.582403+00",
+      "updated_at": "2026-06-18 08:55:38.582403+00"
+    },
+    {
+      "id": "dbf59248-d060-44c8-abe2-e90d2e7a3d25",
+      "full_name": "Ping (Tành)",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:40.178444+00",
+      "updated_at": "2026-06-18 08:55:40.178444+00"
+    },
+    {
+      "id": "19a77469-f638-48a5-83f9-5febf5b04e7f",
+      "full_name": "Hồng Ngọc(Kha'fr)",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:41.76591+00",
+      "updated_at": "2026-06-18 08:55:41.76591+00"
+    },
+    {
+      "id": "9d20b898-3652-428e-adb0-6a78fac4172d",
+      "full_name": "Đăng Khoa(Kha'fr)",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:43.579586+00",
+      "updated_at": "2026-06-18 08:55:43.579586+00"
+    },
+    {
+      "id": "8fd4918e-b409-404a-8ed9-36d9cb5ded6e",
+      "full_name": "Gia Trân",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:45.265932+00",
+      "updated_at": "2026-06-18 08:55:45.265932+00"
+    },
+    {
+      "id": "ee3605df-c785-4788-acd2-bd989c5753ae",
+      "full_name": "Minh Triết",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:46.97129+00",
+      "updated_at": "2026-06-18 08:55:46.97129+00"
+    },
+    {
+      "id": "9e3cd647-601d-4556-bb71-eeedd44c7ae7",
+      "full_name": "Thúy Vy",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:48.689063+00",
+      "updated_at": "2026-06-18 08:55:48.689063+00"
+    },
+    {
+      "id": "acd660ea-4827-4d14-a8ff-e001ccceb054",
+      "full_name": "Thanh Chúc",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:50.286397+00",
+      "updated_at": "2026-06-18 08:55:50.286397+00"
+    },
+    {
+      "id": "683e7afd-ef61-454a-8269-586dd02c8b12",
+      "full_name": "Từ Thái Phong",
+      "phone": "0377612701",
+      "avatar_url": null,
+      "role": "coach",
+      "created_at": "2026-05-24 04:01:07.562819+00",
+      "updated_at": "2026-06-18 08:58:57.628727+00"
+    },
+    {
+      "id": "4b054aa9-4f3e-45d2-acc0-bef73ac6e01d",
+      "full_name": "Nguyễn Thị Như hảo",
+      "phone": "0967273066",
+      "avatar_url": null,
+      "role": "coach",
+      "created_at": "2026-05-24 04:01:09.281143+00",
+      "updated_at": "2026-06-18 08:59:16.065562+00"
+    },
+    {
+      "id": "e165b70a-6869-499a-82d2-929a327dd62f",
+      "full_name": "Nhi",
+      "phone": null,
+      "avatar_url": null,
+      "role": "student",
+      "created_at": "2026-06-18 08:55:52.277423+00",
+      "updated_at": "2026-06-18 09:52:53.746615+00"
+    }
+  ]
+}

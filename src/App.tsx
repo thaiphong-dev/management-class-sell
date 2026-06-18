@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from '@/contexts/AuthContext'
-import { RequireRole, PublicRoute, RootRedirect } from '@/components/auth/RequireAuth'
+import { AuthProvider, useAuthContext } from '@/contexts/AuthContext'
+import { RequireRole, PublicRoute } from '@/components/auth/RequireAuth'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Toaster } from '@/components/ui/toaster'
 import LoginPage from '@/pages/auth/LoginPage'
@@ -24,6 +24,35 @@ import StudentSchedulePage   from '@/pages/student/SchedulePage'
 import StudentAttendancePage from '@/pages/student/AttendancePage'
 import StudentProgressPage   from '@/pages/student/ProgressPage'
 import StudentPackagesPage   from '@/pages/student/PackagesPage'
+// Public & Settings pages
+import LandingPage from '@/pages/public/LandingPage'
+import AdminSettingsPage from '@/pages/admin/SettingsPage'
+
+function DefaultRoute() {
+  const { session, profile, isLoading } = useAuthContext()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Đang tải...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (session && profile) {
+    const ROLE_DASHBOARDS: Record<string, string> = {
+      admin:   '/admin/dashboard',
+      coach:   '/coach/dashboard',
+      student: '/student/dashboard',
+    }
+    return <Navigate to={ROLE_DASHBOARDS[profile.role] || '/login'} replace />
+  }
+
+  return <LandingPage />
+}
 
 export default function App() {
   return (
@@ -50,6 +79,7 @@ export default function App() {
               <Route path="classes"    element={<AdminClassesPage />} />
               <Route path="packages"   element={<AdminPackagesPage />} />
               <Route path="reports"    element={<AdminReportsPage />} />
+              <Route path="settings"   element={<AdminSettingsPage />} />
             </Route>
           </Route>
 
@@ -79,7 +109,7 @@ export default function App() {
           </Route>
 
           {/* Root redirect */}
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/" element={<DefaultRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
