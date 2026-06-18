@@ -67,6 +67,14 @@ interface RegistrationRow {
     skill_level: string
     max_students: number
   }
+  package_id: string | null
+  payment_status: 'unpaid' | 'paid'
+  packages: {
+    name: string
+    price: number
+    sessions_count: number | null
+    validity_days: number
+  } | null
 }
 
 export default function AdminRegistrationsPage() {
@@ -90,7 +98,7 @@ export default function AdminRegistrationsPage() {
     try {
       const { data, error } = await supabase
         .from('registrations')
-        .select('*, classes(name, skill_level, max_students)')
+        .select('*, classes(name, skill_level, max_students), packages(name, price, sessions_count, validity_days)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -223,11 +231,48 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
 
       if (enrollError) throw enrollError
 
+      // 5.5. Grant student package (if selected)
+      let studentPackageId = null
+      if (record.package_id && record.packages) {
+        const { data: pkgInsert, error: pkgError } = await (supabase
+          .from('student_packages') as any)
+          .insert({
+            student_id: studentId,
+            package_id: record.package_id,
+            sessions_total: record.packages.sessions_count,
+            sessions_remaining: record.packages.sessions_count,
+            status: 'pending_activation',
+            notes: 'Cấp thủ công qua phê duyệt đơn đăng ký.'
+          })
+          .select('id')
+          .single()
+
+        if (pkgError) {
+          console.error('Package grant error:', pkgError.message)
+        } else {
+          studentPackageId = pkgInsert?.id
+          
+          // Record payment
+          const { error: paymentError } = await (supabase
+            .from('payments') as any)
+            .insert({
+              student_id: studentId,
+              student_package_id: studentPackageId,
+              amount: record.packages.price,
+              payment_method: 'transfer',
+              status: 'paid',
+              notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
+            })
+          if (paymentError) console.error('Payment record error:', paymentError.message)
+        }
+      }
+
       // 6. Update registration record
       const { error: regUpdateError } = await (supabase
         .from('registrations') as any)
         .update({
           student_id: studentId,
+          payment_status: 'paid',
           status: 'approved'
         })
         .eq('id', record.id)
@@ -298,7 +343,9 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                 <TableRow className="bg-gray-50">
                   <TableHead className="w-[180px] font-semibold text-gray-700 text-xs">Học viên</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-xs">Lớp đăng ký</TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-xs">Gói học & Học phí</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-xs">Liên hệ</TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-xs">Thanh toán</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-xs">Tình trạng thể chất</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-xs">Ngày đăng ký</TableHead>
                   <TableHead className="font-semibold text-gray-700 text-xs">Trạng thái</TableHead>
@@ -329,9 +376,26 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                         <p className="font-semibold text-gray-800">{r.classes.name}</p>
                         <p className="text-[10px] text-gray-500 font-medium">Trình độ: {r.classes.skill_level === 'beginner' ? 'Cơ bản' : r.classes.skill_level === 'intermediate' ? 'Trung cấp' : r.classes.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}</p>
                       </TableCell>
+                      <TableCell className="text-xs">
+                        {r.packages ? (
+                          <>
+                            <p className="font-semibold text-gray-800">{r.packages.name}</p>
+                            <p className="text-[10px] text-red-650 font-bold">{Number(r.packages.price).toLocaleString('vi-VN')} VNĐ</p>
+                          </>
+                        ) : (
+                          <p className="text-gray-400 italic">Chưa chọn gói</p>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs space-y-0.5 text-gray-650">
                         <p className="flex items-center gap-1 font-semibold"><Phone className="w-3 h-3 text-gray-400" /> {r.mobile_phone}</p>
                         <p className="flex items-center gap-1 text-[10px]"><Mail className="w-3 h-3 text-gray-400 text-white/50" /> {r.email}</p>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {r.payment_status === 'paid' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-150 text-green-700 border border-green-200">Đã thanh toán</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-650 border border-gray-200">Chưa thanh toán</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs">
                         {healthIssue ? (
@@ -422,6 +486,9 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-gray-650">
                   <p><strong>Dân tộc:</strong> {detailDialog.record.ethnicity ?? 'Kinh'}</p>
                   <p><strong>Nhóm/CLB:</strong> {detailDialog.record.club_name ?? '—'}</p>
+                  <p><strong>Gói học đăng ký:</strong> {detailDialog.record.packages?.name ?? '—'}</p>
+                  <p><strong>Học phí:</strong> {detailDialog.record.packages ? `${Number(detailDialog.record.packages.price).toLocaleString('vi-VN')} VNĐ` : '—'}</p>
+                  <p><strong>Trạng thái thanh toán:</strong> <span className={detailDialog.record.payment_status === 'paid' ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>{detailDialog.record.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}</span></p>
                   <p><strong>Điện thoại di động:</strong> {detailDialog.record.mobile_phone}</p>
                   <p><strong>Điện thoại nhà riêng:</strong> {detailDialog.record.home_phone ?? '—'}</p>
                   <p><strong>Liên lạc khẩn cấp:</strong> {detailDialog.record.emergency_phone ?? '—'}</p>

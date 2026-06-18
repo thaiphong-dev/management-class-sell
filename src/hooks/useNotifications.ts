@@ -67,6 +67,19 @@ export function useNotifications(): UseNotificationsReturn {
         (payload) => {
           const newNotif = payload.new as Notification
           setNotifications(prev => [newNotif, ...prev].slice(0, 15))
+
+          // Trigger native browser/OS desktop notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(newNotif.title, {
+                body: newNotif.body || '',
+                icon: '/pwa-192x192.png',
+                tag: newNotif.id,
+              })
+            } catch (err) {
+              console.error('Failed to show native notification:', err)
+            }
+          }
         }
       )
       .on(

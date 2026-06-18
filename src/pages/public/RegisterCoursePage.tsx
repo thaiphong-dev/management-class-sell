@@ -17,6 +17,16 @@ interface ClassDetail {
   court_name?: string
 }
 
+interface PackageDetail {
+  id: string
+  name: string
+  package_type: 'session' | 'monthly'
+  sessions_count: number | null
+  validity_days: number
+  price: number
+  description: string | null
+}
+
 export default function RegisterCoursePage() {
   const [searchParams] = useSearchParams()
   const classIdParam = searchParams.get('classId')
@@ -26,11 +36,17 @@ export default function RegisterCoursePage() {
   const [classes, setClasses] = useState<ClassDetail[]>([])
   const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam || '')
   const [selectedClass, setSelectedClass] = useState<ClassDetail | null>(null)
+
+  const [packages, setPackages] = useState<PackageDetail[]>([])
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('')
+  const [selectedPackage, setSelectedPackage] = useState<PackageDetail | null>(null)
   
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'failure'>('idle')
   const [failureReason, setFailureReason] = useState('')
+  const [createdRegistrationId, setCreatedRegistrationId] = useState<string>('')
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
 
   // Form states
   const [clubName, setClubName] = useState('')
@@ -119,9 +135,20 @@ export default function RegisterCoursePage() {
           const cls = formatted.find(c => c.id === selectedClassId)
           if (cls) setSelectedClass(cls)
         }
+
+        // Load active packages
+        const { data: pkgData, error: pkgError } = await supabase
+          .from('packages')
+          .select('id, name, package_type, sessions_count, validity_days, price, description')
+          .eq('status', 'active')
+          .order('sort_order', { ascending: true })
+
+        if (pkgError) throw pkgError
+
+        setPackages(pkgData as PackageDetail[])
       } catch (err: any) {
-        console.error('Error loading classes:', err.message)
-        toast({ title: 'Lỗi tải danh sách lớp', description: err.message, variant: 'destructive' })
+        console.error('Error loading data:', err.message)
+        toast({ title: 'Lỗi tải dữ liệu', description: err.message, variant: 'destructive' })
       } finally {
         setIsLoading(false)
       }
@@ -129,10 +156,44 @@ export default function RegisterCoursePage() {
     loadData()
   }, [selectedClassId, toast])
 
+  // Realtime subscription for payment status updates
+  useEffect(() => {
+    if (!createdRegistrationId) return
+
+    const channel = supabase
+      .channel(`registration_status:${createdRegistrationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'registrations',
+          filter: `id=eq.${createdRegistrationId}`,
+        },
+        (payload) => {
+          const updated = payload.new as { status: string; payment_status: string }
+          if (updated.payment_status === 'paid') {
+            setPaymentConfirmed(true)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [createdRegistrationId])
+
   const handleClassChange = (classId: string) => {
     setSelectedClassId(classId)
     const cls = classes.find(c => c.id === classId) || null
     setSelectedClass(cls)
+  }
+
+  const handlePackageChange = (packageId: string) => {
+    setSelectedPackageId(packageId)
+    const pkg = packages.find(p => p.id === packageId) || null
+    setSelectedPackage(pkg)
   }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,6 +209,11 @@ export default function RegisterCoursePage() {
 
     if (!selectedClassId) {
       toast({ title: 'Vui lòng chọn lớp học', variant: 'destructive' })
+      return
+    }
+
+    if (!selectedPackageId) {
+      toast({ title: 'Vui lòng chọn gói học', variant: 'destructive' })
       return
     }
 
@@ -207,10 +273,12 @@ export default function RegisterCoursePage() {
       }
 
       // Step 3: Insert registration record
-      const { error: insertError } = await (supabase
+      const { data: insertResult, error: insertError } = await (supabase
         .from('registrations') as any)
         .insert({
           class_id: selectedClassId,
+          package_id: selectedPackageId,
+          payment_status: 'unpaid',
           club_name: clubName,
           first_name: firstName,
           last_name: lastName,
@@ -246,11 +314,16 @@ export default function RegisterCoursePage() {
           terms_accepted: true,
           status: 'pending'
         })
+        .select('id')
+        .single()
 
       if (insertError) throw insertError
 
+      const insertedId = insertResult?.id || ''
+      setCreatedRegistrationId(insertedId)
+      setPaymentConfirmed(false)
       setSubmitStatus('success')
-      toast({ title: 'Gửi đăng ký thành công!' })
+      toast({ title: 'Gửi đăng ký thành công! Vui lòng thanh toán.' })
     } catch (err: any) {
       console.error('Registration failed:', err)
       toast({ title: 'Đăng ký thất bại', description: err.message, variant: 'destructive' })
@@ -271,36 +344,114 @@ export default function RegisterCoursePage() {
   }
 
   if (submitStatus === 'success') {
+    const BANK_ID = 'MB'
+    const BANK_ACCOUNT = '0901234567'
+    const BANK_ACCOUNT_NAME = 'THAI PHONG BADMINTON'
+    const shortId = createdRegistrationId.substring(0, 8)
+    const memo = `TPB${shortId}`
+    const amount = selectedPackage ? Number(selectedPackage.price) : 0
+    const vietQrUrl = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT}-compact2.png?amount=${amount}&addInfo=${memo}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 font-sans">
         <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-xl border border-gray-100 space-y-6">
-          <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-12 h-12" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-extrabold text-gray-900">Đăng Ký Thành Công!</h2>
-            <p className="text-sm text-gray-500">
-              Đơn đăng ký của học sinh <span className="font-bold text-gray-800">{lastName} {firstName}</span> đã được ghi nhận trên hệ thống Thái Phong Badminton Class.
-            </p>
-          </div>
-          <div className="p-4 bg-gray-50 rounded-2xl text-left text-xs space-y-2 text-gray-600 border border-gray-100">
-            <p className="font-semibold text-gray-800 text-sm mb-1">🔍 Thông tin lớp đăng ký:</p>
-            <p><strong>Lớp học:</strong> {selectedClass?.name}</p>
-            {selectedClass?.facility_name && (
-              <p><strong>Địa điểm:</strong> {selectedClass.facility_name} (Sân {selectedClass.court_name})</p>
-            )}
-            <p><strong>Trình độ:</strong> {selectedClass?.skill_level === 'beginner' ? 'Cơ bản' : selectedClass?.skill_level === 'intermediate' ? 'Trung cấp' : selectedClass?.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}</p>
-          </div>
-          <p className="text-xs text-gray-400">
-            Ban quản lý và Huấn luyện viên sẽ duyệt thông tin và chủ động liên hệ với phụ huynh qua số điện thoại để sắp xếp lịch học thử và test trình độ.
-          </p>
-          <div className="pt-4 border-t border-gray-100">
-            <Link to="/">
-              <Button className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-6 font-bold">
-                Quay lại trang chủ
-              </Button>
-            </Link>
-          </div>
+          {paymentConfirmed ? (
+            <>
+              <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                <CheckCircle2 className="w-12 h-12" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-extrabold text-gray-900">Thanh Toán Thành Công!</h2>
+                <p className="text-sm text-gray-500">
+                  Giao dịch học phí cho học viên <span className="font-bold text-gray-800">{lastName} {firstName}</span> đã được ghi nhận. Tài khoản của học sinh đã được tạo và kích hoạt lớp <span className="font-bold text-gray-800">"${selectedClass?.name}"</span>.
+                </p>
+              </div>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-2xl text-left text-xs space-y-2 text-green-800">
+                <p className="font-bold text-green-900 text-sm mb-1">🎉 Thông tin lớp & thẻ học:</p>
+                <p><strong>Học viên:</strong> {lastName} {firstName}</p>
+                <p><strong>Lớp học:</strong> {selectedClass?.name}</p>
+                <p><strong>Gói học:</strong> {selectedPackage?.name}</p>
+                <p><strong>Trạng thái tài khoản:</strong> Đã kích hoạt. Huấn luyện viên sẽ liên hệ với bạn trước buổi học.</p>
+              </div>
+              <div className="pt-4">
+                <Link to="/">
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-6 font-bold">
+                    Quay lại trang chủ
+                  </Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-extrabold text-gray-900">Đăng Ký Thành Công!</h2>
+                <p className="text-sm text-gray-500">
+                  Đơn đăng ký của học sinh <span className="font-bold text-gray-800">{lastName} {firstName}</span> đã được lưu. Vui lòng thanh toán học phí để kích hoạt lớp học.
+                </p>
+              </div>
+
+              {/* VietQR Display */}
+              <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-4">
+                <p className="font-bold text-gray-800 text-sm">Quét mã VietQR để thanh toán học phí</p>
+                
+                <div className="relative w-64 h-64 mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden flex items-center justify-center p-2 shadow-sm">
+                  <img src={vietQrUrl} alt="VietQR Payment" className="max-w-full max-h-full object-contain" />
+                </div>
+
+                <div className="text-left text-xs space-y-1.5 text-gray-650 border-t border-gray-200/60 pt-3">
+                  <p><strong>Số tài khoản:</strong> <span className="text-gray-900 font-bold select-all">{BANK_ACCOUNT}</span> ({BANK_ID})</p>
+                  <p><strong>Chủ tài khoản:</strong> <span className="text-gray-900 font-bold">{BANK_ACCOUNT_NAME}</span></p>
+                  <p><strong>Số tiền:</strong> <span className="text-red-600 font-extrabold">{amount.toLocaleString('vi-VN')} VNĐ</span></p>
+                  <p>
+                    <strong>Cú pháp chuyển khoản (Memo):</strong>{' '}
+                    <span className="bg-red-50 text-red-700 font-extrabold px-1.5 py-0.5 rounded border border-red-200/50 select-all">{memo}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-yellow-50/60 border border-yellow-100 rounded-xl text-left text-[11px] text-yellow-800 leading-relaxed flex gap-2">
+                <Info className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Lưu ý quan trọng:</span> Quý phụ huynh vui lòng giữ đúng **nội dung chuyển khoản ({memo})** để hệ thống tự động kích hoạt tài khoản trong vòng 1-2 phút sau khi nhận được tiền.
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <Button 
+                  disabled={isSubmitting} 
+                  onClick={async () => {
+                    setIsSubmitting(true)
+                    // Check manual status
+                    const { data: reg, error } = await (supabase
+                      .from('registrations') as any)
+                      .select('payment_status, status')
+                      .eq('id', createdRegistrationId)
+                      .single()
+                    setIsSubmitting(false)
+                    if (error) {
+                      toast({ title: 'Lỗi kiểm tra trạng thái', description: error.message, variant: 'destructive' })
+                      return
+                    }
+                    if (reg?.payment_status === 'paid') {
+                      setPaymentConfirmed(true)
+                      toast({ title: 'Thanh toán thành công!' })
+                    } else {
+                      toast({ title: 'Hệ thống chưa ghi nhận chuyển khoản', description: 'Nếu đã chuyển khoản, vui lòng đợi 1-2 phút rồi kiểm tra lại hoặc liên hệ HLV.' })
+                    }
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl py-6 font-bold flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Tôi đã chuyển khoản - Kiểm tra trạng thái'}
+                </Button>
+                
+                <Link to="/">
+                  <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-700 font-medium text-xs">
+                    Quay lại trang chủ (tài khoản sẽ được kích hoạt khi thanh toán xong)
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )
@@ -310,14 +461,14 @@ export default function RegisterCoursePage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 font-sans">
         <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-xl border border-gray-100 space-y-6">
-          <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <div className="w-20 h-20 bg-red-50 text-red-650 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-12 h-12" />
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-extrabold text-gray-900">Đăng Ký Thất Bại</h2>
             <p className="text-sm text-red-500 font-medium">{failureReason}</p>
           </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
+          <p className="text-xs text-gray-505 leading-relaxed">
             Do sĩ số tối đa của lớp học đã được lấp đầy bởi các học sinh trước đó. Quý phụ huynh vui lòng chọn một lớp học khác còn slot trống hoặc liên hệ HLV để được hỗ trợ sắp xếp lớp bổ sung.
           </p>
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
@@ -365,14 +516,14 @@ export default function RegisterCoursePage() {
               <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2 text-sm flex items-center gap-1.5 text-red-600">
                 <Calendar className="w-4 h-4" /> 1. LỚP HỌC ĐĂNG KÝ
               </h3>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn Lớp Tập Luyện <span className="text-red-500">*</span></label>
                   <select
                     value={selectedClassId}
                     onChange={(e) => handleClassChange(e.target.value)}
                     required
-                    className="mt-1 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
+                    className="mt-1 w-full px-4 py-3 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
                   >
                     <option value="">-- Chọn lớp học --</option>
                     {classes.map(c => (
@@ -382,22 +533,53 @@ export default function RegisterCoursePage() {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn Gói Học Muốn Mua <span className="text-red-500">*</span></label>
+                  <select
+                    value={selectedPackageId}
+                    onChange={(e) => handlePackageChange(e.target.value)}
+                    required
+                    className="mt-1 w-full px-4 py-3 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
+                  >
+                    <option value="">-- Chọn gói học --</option>
+                    {packages.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} - {Number(p.price).toLocaleString('vi-VN')} VNĐ ({p.package_type === 'session' ? `${p.sessions_count} buổi` : 'Theo tháng'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {selectedClass && (
-                <div className="mt-3 p-4.5 bg-red-50/50 border border-red-100 rounded-2xl space-y-2">
-                  <div className="flex items-start gap-2 text-xs text-red-800">
-                    <Info className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold">Lớp đang chọn: {selectedClass.name}</p>
-                      <p>Sân tập: {selectedClass.facility_name || 'Đang cập nhật'} {selectedClass.court_name ? `(Sân ${selectedClass.court_name})` : ''}</p>
-                      <p>Giới hạn tối đa: {selectedClass.max_students} học viên</p>
+              {(selectedClass || selectedPackage) && (
+                <div className="mt-3 p-4.5 bg-red-50/50 border border-red-100 rounded-2xl space-y-3">
+                  {selectedClass && (
+                    <div className="flex items-start gap-2 text-xs text-red-800">
+                      <Info className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold">Lớp đang chọn: {selectedClass.name}</p>
+                        <p>Sân tập: {selectedClass.facility_name || 'Đang cập nhật'} {selectedClass.court_name ? `(Sân ${selectedClass.court_name})` : ''}</p>
+                        <p>Giới hạn tối đa: {selectedClass.max_students} học viên</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {selectedPackage && (
+                    <div className="flex items-start gap-2 text-xs text-green-800 border-t border-red-200/40 pt-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-650 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold">Gói học đang chọn: {selectedPackage.name}</p>
+                        <p>Học phí: <span className="font-extrabold text-red-600 text-sm">{Number(selectedPackage.price).toLocaleString('vi-VN')} VNĐ</span></p>
+                        <p>Hạn sử dụng: {selectedPackage.validity_days} ngày từ khi kích hoạt</p>
+                        {selectedPackage.description && <p className="text-gray-500 italic text-[11px] mt-0.5">{selectedPackage.description}</p>}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Note trình độ Trung cấp / Nâng cao */}
-                  {selectedClass.skill_level !== 'beginner' && (
-                    <div className="mt-2.5 p-3 bg-yellow-50 border border-yellow-200 rounded-xl flex gap-2 text-[11px] text-yellow-850 leading-relaxed">
+                  {selectedClass && selectedClass.skill_level !== 'beginner' && (
+                    <div className="mt-2.5 p-3 bg-yellow-50 border border-yellow-250 rounded-xl flex gap-2 text-[11px] text-yellow-850 leading-relaxed">
                       <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <span className="font-extrabold uppercase text-yellow-800">Thông báo test trình độ:</span> Học sinh đăng ký lớp trình độ Trung cấp/Nâng cao sẽ được kiểm tra trình độ tại buổi học đầu tiên tại lớp. Nếu học viên không đáp ứng đủ trình độ, huấn luyện viên sẽ trao đổi trực tiếp với phụ huynh để chuyển học viên vào lớp học có trình độ phù hợp hơn.
@@ -407,7 +589,7 @@ export default function RegisterCoursePage() {
                 </div>
               )}
             </div>
-
+            
             {/* Thông tin học sinh */}
             <div className="space-y-4">
               <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2 text-sm flex items-center gap-1.5 text-red-600">
