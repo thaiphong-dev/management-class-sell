@@ -69,6 +69,8 @@ interface RegistrationRow {
     max_students: number
   }
   package_id: string | null
+  student_package_id?: string | null
+  payment_id?: string | null
   payment_status: 'unpaid' | 'paid'
   packages: {
     name: string
@@ -91,16 +93,63 @@ export default function AdminRegistrationsPage() {
   const [approveDialog, setApproveDialog] = useState<{ open: boolean; record: RegistrationRow | null }>({ open: false, record: null })
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; record: RegistrationRow | null }>({ open: false, record: null })
   
-  const [rejectReason, setRejectReason] = useState('')
-  const [tempPassword, setTempPassword] = useState('Student@123')
+  const [photoCache, setPhotoCache] = useState<Record<string, string | null>>({})
   const [isProcessing, setIsProcessing] = useState(false)
+  const [tempPassword, setTempPassword] = useState('123456')
+  const [rejectReason, setRejectReason] = useState('')
+
+  const fetchStudentPhoto = async (regId: string) => {
+    if (photoCache[regId] !== undefined) return photoCache[regId]
+    
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('student_photo_url')
+        .eq('id', regId)
+        .single()
+      
+      if (error) throw error
+      const url = (data as any)?.student_photo_url || null
+      setPhotoCache(prev => ({ ...prev, [regId]: url }))
+      return url
+    } catch (err) {
+      console.error('Failed to fetch student photo:', err)
+      return null
+    }
+  }
+
+  const openDetail = async (record: RegistrationRow) => {
+    setDetailDialog({ open: true, record: { ...record, student_photo_url: undefined as any } })
+    if (record.id) {
+      const url = await fetchStudentPhoto(record.id)
+      setDetailDialog(prev => prev.record?.id === record.id ? { ...prev, record: { ...prev.record, student_photo_url: url } } : prev)
+    }
+  }
+
+  const openApprove = async (record: RegistrationRow) => {
+    setApproveDialog({ open: true, record })
+    if (record.id && photoCache[record.id] === undefined) {
+      const url = await fetchStudentPhoto(record.id)
+      setApproveDialog(prev => prev.record?.id === record.id ? { ...prev, record: { ...prev.record, student_photo_url: url } } : prev)
+    }
+  }
 
   async function loadRegistrations() {
     setIsLoading(true)
     try {
       const { data, error } = await supabase
         .from('registrations')
-        .select('*, classes(name, skill_level, max_students), packages(name, price, sessions_count, validity_days)')
+        .select(`
+          id, student_id, class_id, club_name, first_name, last_name, title, gender, date_of_birth,
+          home_address, home_phone, mobile_phone, emergency_phone, email, ethnicity,
+          q1_heart_condition, q2_chest_pain_activity, q3_chest_pain_rest, q4_fainting_dizziness, q5_joint_problem,
+          q6_high_blood_pressure, q7_medications, q7_medications_detail, q8_pregnant, q9_other_reasons,
+          q9_other_reasons_detail, q10_disability, q10_disability_detail,
+          parent_name, parent_relationship, parent_address, parent_home_phone, parent_mobile_phone, parent_email,
+          terms_accepted, status, created_at, package_id, payment_status,
+          classes(name, skill_level, max_students),
+          packages(name, price, sessions_count, validity_days)
+        `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -144,9 +193,70 @@ export default function AdminRegistrationsPage() {
 
     setIsProcessing(true)
     try {
+      let studentId = record.student_id
+
+      if (studentId) {
+        console.log('Phê duyệt đăng ký đã có tài khoản sẵn:', studentId)
+        
+        // 1. Update the existing pending payment to 'paid' (if payment_id is present)
+        if (record.payment_id) {
+          const { error: paymentError } = await (supabase
+            .from('payments') as any)
+            .update({
+              status: 'paid',
+              notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
+            })
+            .eq('id', record.payment_id)
+          if (paymentError) console.error('Payment update error:', paymentError.message)
+        } else {
+          // Fallback: look for pending payment
+          const { data: unpaidPayment } = await (supabase
+            .from('payments') as any)
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+            
+          if (unpaidPayment) {
+            await (supabase
+              .from('payments') as any)
+              .update({
+                status: 'paid',
+                notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
+              })
+              .eq('id', unpaidPayment.id)
+          }
+        }
+
+        // 2. Update registration record
+        const { error: regUpdateError } = await (supabase
+          .from('registrations') as any)
+          .update({
+            payment_status: 'paid',
+            status: 'approved'
+          })
+          .eq('id', record.id)
+
+        if (regUpdateError) throw regUpdateError
+
+        toast({ title: 'Đã phê duyệt đăng ký', description: `Học sinh đã được thêm vào lớp ${record.classes.name}.` })
+        setApproveDialog({ open: false, record: null })
+        await loadRegistrations()
+        setIsProcessing(false)
+        return
+      }
+
       // 1. Call Create User Edge Function
       const jwt = session?.access_token
       if (!jwt) throw new Error('Not authenticated')
+
+      // Fetch photo lazily if not present in memory
+      let photoUrl = record.student_photo_url
+      if (!photoUrl && photoCache[record.id] === undefined) {
+        photoUrl = await fetchStudentPhoto(record.id)
+      }
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
@@ -184,7 +294,7 @@ export default function AdminRegistrationsPage() {
         throw new Error('Không tìm thấy bản ghi học viên tương ứng: ' + studentFetchError?.message)
       }
 
-      const studentId = (studentData as any).id
+      studentId = (studentData as any).id
 
       // 3. Update student table with additional details (emergency contact, notes, avatar)
       const healthNotes = `
@@ -211,11 +321,11 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
       if (studentUpdateError) console.error('Student profile update error:', studentUpdateError.message)
 
       // 4. Update profile avatar if portrait exists (stores Base64)
-      if (record.student_photo_url) {
+      if (photoUrl) {
         const { error: profileUpdateError } = await (supabase
           .from('profiles') as any)
           .update({
-            avatar_url: record.student_photo_url
+            avatar_url: photoUrl
           })
           .eq('id', authUserId)
 
@@ -361,12 +471,10 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                     <TableRow key={r.id} className="hover:bg-gray-55/40 transition-colors">
                       <TableCell className="font-medium text-gray-900 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-10 rounded bg-gray-100 border border-gray-250/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                            {r.student_photo_url ? (
-                              <img src={r.student_photo_url} alt="Ảnh học viên" className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-4 h-4 text-gray-400" />
-                            )}
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-semibold">
+                              {r.first_name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900">{r.last_name} {r.first_name}</p>
@@ -420,7 +528,7 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                         <Button
                           variant="ghost"
                           className="h-8 text-[11px] font-bold px-2.5 text-gray-500 hover:bg-gray-100 rounded-lg"
-                          onClick={() => setDetailDialog({ open: true, record: r })}
+                          onClick={() => openDetail(r)}
                         >
                           Xem chi tiết
                         </Button>
@@ -439,7 +547,7 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                             <Button
                               variant="ghost"
                               className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg"
-                              onClick={() => setApproveDialog({ open: true, record: r })}
+                              onClick={() => openApprove(r)}
                             >
                               <Check className="w-4 h-4" />
                             </Button>
@@ -479,7 +587,9 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
               {/* Header Info */}
               <div className="flex gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                 <div className="w-16 h-20 rounded bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                  {detailDialog.record.student_photo_url ? (
+                  {detailDialog.record.student_photo_url === undefined ? (
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                  ) : detailDialog.record.student_photo_url ? (
                     <img src={detailDialog.record.student_photo_url} alt="Ảnh học sinh" className="w-full h-full object-cover" />
                   ) : (
                     <User className="w-8 h-8 text-gray-300" />

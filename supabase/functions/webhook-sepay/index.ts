@@ -149,6 +149,94 @@ Deno.serve(async (req) => {
       )
     }
 
+    // 6. Check if student already exists for this registration
+    let studentId = registration.student_id;
+
+    if (studentId) {
+      console.log('Registration already has student_id associated:', studentId);
+      
+      // Update existing pending payment to paid
+      console.log('Updating existing pending payment to paid...');
+      if (registration.payment_id) {
+        const { error: paymentError } = await supabaseAdmin
+          .from('payments')
+          .update({
+            status: 'paid',
+            paid_at: transactionDate ? new Date(transactionDate).toISOString() : new Date().toISOString(),
+            notes: `Chuyển khoản tự động qua Sepay. Mã GD ngân hàng: ${transactionId}. Cú pháp: ${code || content}`,
+          })
+          .eq('id', registration.payment_id);
+        if (paymentError) {
+          console.error('Failed to update existing payment status:', paymentError.message);
+        }
+      } else {
+        // Fallback: look for pending payment
+        const { data: unpaidPayment } = await supabaseAdmin
+          .from('payments')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (unpaidPayment) {
+          await supabaseAdmin
+            .from('payments')
+            .update({
+              status: 'paid',
+              paid_at: transactionDate ? new Date(transactionDate).toISOString() : new Date().toISOString(),
+              notes: `Chuyển khoản tự động qua Sepay. Mã GD ngân hàng: ${transactionId}. Cú pháp: ${code || content}`,
+            })
+            .eq('id', unpaidPayment.id);
+        }
+      }
+
+      // Log processed transaction in sepay_transactions
+      console.log('Logging Sepay transaction...');
+      const { error: txError } = await supabaseAdmin
+        .from('sepay_transactions')
+        .insert({
+          transaction_id: String(transactionId),
+          amount: paidAmount,
+          transfer_type: 'in',
+          transfer_date: transactionDate ? new Date(transactionDate).toISOString() : new Date().toISOString(),
+          gateway,
+          account_number: accountNumber,
+          sub_account: subAccount,
+          code,
+          content,
+          registration_id: registration.id,
+        });
+      if (txError) console.error('Sepay transaction logging warning:', txError.message);
+
+      // Finally approve the registration record
+      console.log('Approving registration record...');
+      const { error: regUpdateError } = await supabaseAdmin
+        .from('registrations')
+        .update({
+          payment_status: 'paid',
+          status: 'approved',
+        })
+        .eq('id', registration.id);
+
+      if (regUpdateError) {
+        throw new Error(`Failed to update registration status: ${regUpdateError.message}`);
+      }
+
+      console.log('Registration auto-approved and processed successfully!');
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Payment received and registration auto-approved successfully',
+          registration_id: registration.id,
+          student_id: studentId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 6. Create Auth User & Student
     const email = registration.email.trim()
     const rawFullName = `${registration.last_name} ${registration.first_name}`.trim()
@@ -169,10 +257,20 @@ Deno.serve(async (req) => {
     let authUserId: string
 
     // Check if auth user exists
-    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(email)
-    if (existingUser?.user) {
-      console.log('User auth already exists, reusing account:', existingUser.user.id)
-      authUserId = existingUser.user.id
+    const { data: userListData, error: userListError } = await supabaseAdmin.auth.admin.listUsers({
+      filter: {
+        email: email
+      }
+    })
+    
+    if (userListError) {
+      throw new Error(`Failed to list users: ${userListError.message}`)
+    }
+
+    const existingUser = userListData?.users?.[0]
+    if (existingUser) {
+      console.log('User auth already exists, reusing account:', existingUser.id)
+      authUserId = existingUser.id
     } else {
       // Create user
       const password = phone || 'Student@123'
@@ -236,7 +334,7 @@ ${registration.q10_disability ? `- Chi tiết khuyết tật: ${registration.q10
       throw new Error(`Failed to upsert student record: ${studentError?.message}`)
     }
 
-    const studentId = studentData.id
+    studentId = studentData.id
     console.log('Student record verified. Student ID:', studentId)
 
     // Enroll student in class

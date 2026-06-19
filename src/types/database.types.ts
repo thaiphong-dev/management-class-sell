@@ -245,6 +245,11 @@ export type Database = {
           zalo_url: string
           facebook_url: string
           updated_at: string | null
+          bank_id: string
+          bank_account: string
+          bank_account_name: string
+          bank_bin: string
+          bank_branch: string | null
         }
         Insert: {
           id?: string
@@ -256,6 +261,11 @@ export type Database = {
           zalo_url?: string
           facebook_url?: string
           updated_at?: string | null
+          bank_id?: string
+          bank_account?: string
+          bank_account_name?: string
+          bank_bin?: string
+          bank_branch?: string | null
         }
         Update: {
           id?: string
@@ -267,6 +277,11 @@ export type Database = {
           zalo_url?: string
           facebook_url?: string
           updated_at?: string | null
+          bank_id?: string
+          bank_account?: string
+          bank_account_name?: string
+          bank_bin?: string
+          bank_branch?: string | null
         }
         Relationships: []
       }

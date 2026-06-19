@@ -1,8 +1,27 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 export default function NotFoundPage() {
+  const { session, profile, isLoading } = useAuthContext()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (session && profile) {
+    const ROLE_DASHBOARDS: Record<string, string> = {
+      admin:   '/admin/dashboard',
+      coach:   '/coach/dashboard',
+      student: '/student/dashboard',
+    }
+    return <Navigate to={ROLE_DASHBOARDS[profile.role] || '/'} replace />
+  }
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 relative text-white"

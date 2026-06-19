@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
-import { CreditCard, Calendar, Layers, AlertTriangle, CheckCircle2, ShoppingCart, Clock, Repeat2 } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { CreditCard, Calendar, Layers, AlertTriangle, CheckCircle2, ShoppingCart, Clock, Repeat2, Trash2, Check, Loader2, Info } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 interface ActiveCard {
   id: string
@@ -55,15 +59,33 @@ export default function StudentPackagesPage() {
   const [history, setHistory] = useState<PackageHistory[]>([])
   const [availablePackages, setAvailablePackages] = useState<AvailablePackage[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
 
-  useEffect(() => {
+  // Unpaid package & banking state
+  const [unpaidRegistration, setUnpaidRegistration] = useState<any | null>(null)
+  const [bankDetails, setBankDetails] = useState({
+    bank_id: 'MSB',
+    bank_account: '96886693012620',
+    bank_account_name: 'TU THAI PHONG',
+    bank_bin: '970426',
+    bank_branch: 'CN Hà Nội'
+  })
+
+  // Catalog Buying state
+  const [activeClasses, setActiveClasses] = useState<any[]>([])
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false)
+  const [selectedPkgForBuy, setSelectedPkgForBuy] = useState<AvailablePackage | null>(null)
+  const [selectedClassId, setSelectedClassId] = useState<string>('')
+
+  const loadPageData = useCallback(async () => {
     if (!profile) return
-
-    async function loadPackages() {
+    setIsLoading(true)
+    try {
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('id')
-        .eq('user_id', profile!.id)
+        .eq('user_id', profile.id)
         .maybeSingle()
 
       if (studentError) {
@@ -72,24 +94,38 @@ export default function StudentPackagesPage() {
         return
       }
       const student = studentData as { id: string } | null
-      if (!student) { setIsLoading(false); return }
+      if (!student) {
+        setIsLoading(false)
+        return
+      }
 
-      const [activeRes, historyRes, availableRes] = await Promise.all([
-        supabase
-          .from('active_student_packages')
+      const [activeRes, historyRes, availableRes, unpaidRes, bankRes, classesRes] = await Promise.all([
+        (supabase.from('active_student_packages') as any)
           .select('id, package_name, package_type, sessions_remaining, sessions_total, days_remaining, expires_at, activated_at, alert_level')
           .eq('student_id', student.id),
-        supabase
-          .from('student_packages')
+        (supabase.from('student_packages') as any)
           .select('id, purchased_at, activated_at, expires_at, status, sessions_total, sessions_remaining, packages(name, package_type, coaching_type)')
           .eq('student_id', student.id)
           .order('purchased_at', { ascending: false }),
-        supabase
-          .from('packages')
+        (supabase.from('packages') as any)
           .select('id, name, package_type, sessions_count, validity_days, price, description, coaching_type')
           .eq('status', 'active')
           .order('sort_order')
           .order('price'),
+        (supabase.from('registrations') as any)
+          .select('id, student_package_id, payment_id, classes(id, name), packages(id, name, price)')
+          .eq('student_id', student.id)
+          .eq('payment_status', 'unpaid')
+          .eq('status', 'pending')
+          .maybeSingle(),
+        (supabase.from('landing_settings') as any)
+          .select('bank_id, bank_account, bank_account_name, bank_bin, bank_branch')
+          .limit(1)
+          .maybeSingle(),
+        (supabase.from('classes') as any)
+          .select('id, name, skill_level')
+          .eq('status', 'active')
+          .order('name')
       ])
 
       if (activeRes.error) {
@@ -149,13 +185,147 @@ export default function StudentPackagesPage() {
         }))
       }
 
+      if (unpaidRes.data) {
+        setUnpaidRegistration(unpaidRes.data)
+      } else {
+        setUnpaidRegistration(null)
+      }
+
+      if (bankRes.data) {
+        setBankDetails({
+          bank_id: bankRes.data.bank_id || 'MSB',
+          bank_account: bankRes.data.bank_account || '96886693012620',
+          bank_account_name: bankRes.data.bank_account_name || 'TU THAI PHONG',
+          bank_bin: bankRes.data.bank_bin || '970426',
+          bank_branch: bankRes.data.bank_branch || ''
+        })
+      }
+
+      if (classesRes.data) {
+        setActiveClasses(classesRes.data)
+        if (classesRes.data.length > 0) {
+          setSelectedClassId(classesRes.data[0].id)
+        }
+      }
+
       setActiveCards(activeRows)
       setHistory(historyRows)
+    } catch (err) {
+      console.error('Error loading page data:', err)
+    } finally {
       setIsLoading(false)
     }
-
-    loadPackages()
   }, [profile, toast])
+
+  useEffect(() => {
+    loadPageData()
+  }, [loadPageData])
+
+  const handleBuyClick = (pkg: AvailablePackage) => {
+    if (unpaidRegistration) {
+      toast({
+        title: 'Không thể đăng ký',
+        description: 'Bạn đang có một thẻ học chờ thanh toán. Vui lòng thanh toán hoặc hủy thẻ đó trước.',
+        variant: 'destructive'
+      })
+      return
+    }
+    setSelectedPkgForBuy(pkg)
+    setBuyDialogOpen(true)
+  }
+
+  const handleConfirmBuy = async () => {
+    if (!selectedPkgForBuy || !selectedClassId) return
+    setIsSubmitting(true)
+    try {
+      const { error } = await (supabase.rpc as any)('student_buy_package', {
+        p_class_id: selectedClassId,
+        p_package_id: selectedPkgForBuy.id
+      })
+
+      if (error) throw error
+
+      toast({
+        title: 'Đăng ký thành công',
+        description: 'Đơn mua thẻ học đã được tạo. Vui lòng chuyển khoản để kích hoạt gói học.'
+      })
+      setBuyDialogOpen(false)
+      await loadPageData()
+    } catch (err: any) {
+      console.error('Error in student_buy_package:', err.message)
+      toast({
+        title: 'Lỗi đăng ký mua',
+        description: err.message || 'Lỗi không xác định',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelUnpaid = async (regId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn mua thẻ học chờ thanh toán này không?')) return
+    setIsSubmitting(true)
+    try {
+      const { error } = await (supabase.rpc as any)('cancel_pending_registration', {
+        p_registration_id: regId
+      })
+
+      if (error) throw error
+
+      toast({
+        title: 'Đã hủy đơn mua',
+        description: 'Đơn mua thẻ học chờ thanh toán đã được hủy bỏ.'
+      })
+      await loadPageData()
+    } catch (err: any) {
+      console.error('Error in cancel_pending_registration:', err.message)
+      toast({
+        title: 'Lỗi hủy đơn mua',
+        description: err.message || 'Lỗi không xác định',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCheckStatus = async (regId: string) => {
+    setIsChecking(true)
+    try {
+      const { data, error } = await (supabase
+        .from('registrations') as any)
+        .select('payment_status, status')
+        .eq('id', regId)
+        .single()
+
+      if (error) throw error
+
+      const reg = data as any
+
+      if (reg && (reg.payment_status === 'paid' || reg.status === 'approved')) {
+        toast({
+          title: 'Đã kích hoạt!',
+          description: 'Hệ thống đã nhận thanh toán thành công và kích hoạt thẻ học của bạn.'
+        })
+        await loadPageData()
+      } else {
+        toast({
+          title: 'Chưa thanh toán',
+          description: 'Hệ thống chưa nhận được giao dịch chuyển khoản khớp với cú pháp của bạn. Vui lòng quét mã QR chuyển khoản lại hoặc đợi ít phút.'
+        })
+      }
+    } catch (err: any) {
+      console.error('Error checking registration status:', err.message)
+      toast({
+        title: 'Lỗi kiểm tra',
+        description: err.message,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsChecking(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -164,6 +334,97 @@ export default function StudentPackagesPage() {
         <p className="text-sm text-gray-500 mt-0.5">Gói học đang dùng và lịch sử thẻ</p>
       </div>
 
+      {/* Unpaid Registration Card (Chờ thanh toán) */}
+      {!isLoading && unpaidRegistration && (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <p className="text-sm font-bold text-amber-800 uppercase tracking-wide">Thẻ học chờ thanh toán</p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full">
+              Chờ chuyển khoản
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            {/* Left info column */}
+            <div className="md:col-span-7 space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Gói đăng ký</p>
+                <p className="text-lg font-bold text-gray-800">{unpaidRegistration.packages?.name || '—'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <p className="text-gray-500 font-medium">Lớp học đăng ký</p>
+                  <p className="font-semibold text-gray-700">{unpaidRegistration.classes?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 font-medium">Số tiền cần đóng</p>
+                  <p className="font-bold text-primary-700 text-sm">
+                    {formatCurrency(unpaidRegistration.packages?.price || 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bank Details Box */}
+              <div className="p-3.5 bg-white border border-amber-100 rounded-xl space-y-2 text-xs">
+                <p className="font-bold text-gray-700 flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 text-amber-500" /> Hướng dẫn chuyển khoản:
+                </p>
+                <div className="font-mono text-[11px] text-gray-700 space-y-1">
+                  <p>Ngân hàng: <span className="font-semibold">{bankDetails.bank_id}</span></p>
+                  <p>Số tài khoản: <span className="font-semibold">{bankDetails.bank_account}</span></p>
+                  <p>Tên tài khoản: <span className="font-semibold">{bankDetails.bank_account_name}</span></p>
+                  <p>Số tiền: <span className="font-bold text-primary-700">{formatCurrency(unpaidRegistration.packages?.price || 0)}</span></p>
+                  <p>Nội dung CK: <span className="bg-amber-100 font-bold px-2 py-0.5 rounded text-amber-800 select-all">TPB{unpaidRegistration.id.substring(0, 8)}</span></p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  onClick={() => handleCheckStatus(unpaidRegistration.id)}
+                  disabled={isChecking || isSubmitting}
+                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs px-4 h-9 font-semibold gap-1.5"
+                >
+                  {isChecking ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  Kiểm tra thanh toán
+                </Button>
+                <Button
+                  onClick={() => handleCancelUnpaid(unpaidRegistration.id)}
+                  disabled={isChecking || isSubmitting}
+                  variant="outline"
+                  className="border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-xs px-4 h-9 font-semibold gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Hủy đơn đăng ký
+                </Button>
+              </div>
+            </div>
+
+            {/* Right QR Column */}
+            <div className="md:col-span-5 flex flex-col items-center justify-center bg-white p-3 rounded-2xl border border-amber-100 shadow-inner">
+              <div className="w-40 h-40 flex items-center justify-center p-1.5 border border-gray-100 rounded-xl relative overflow-hidden bg-white">
+                <img
+                  src={`https://img.vietqr.io/image/${bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${unpaidRegistration.packages?.price || 0}&addInfo=TPB${unpaidRegistration.id.substring(0, 8)}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`}
+                  alt="VietQR Payment QR"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[180px]">
+                Quét mã này bằng ứng dụng ngân hàng của bạn để thanh toán nhanh chóng.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Active cards */}
       {isLoading ? (
         <div className="animate-pulse h-40 bg-gray-100 rounded-2xl" />
@@ -171,7 +432,7 @@ export default function StudentPackagesPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
           <CreditCard className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm font-medium">Không có thẻ đang hoạt động</p>
-          <p className="text-gray-400 text-xs mt-1">Liên hệ admin để mua gói học</p>
+          <p className="text-gray-400 text-xs mt-1">Vui lòng đăng ký gói học ở danh sách bên dưới hoặc liên hệ admin.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -188,7 +449,9 @@ export default function StudentPackagesPage() {
             <ShoppingCart className="w-4 h-4 text-primary-700" />
             <h3 className="text-base font-semibold text-gray-800">Gói học có thể đăng ký</h3>
           </div>
-          <p className="text-xs text-gray-400 mb-3">Liên hệ Admin hoặc HLV để được cấp gói. Thanh toán và kích hoạt qua quản trị viên.</p>
+          <p className="text-xs text-gray-400 mb-3">
+            Đăng ký gói học trực tiếp. Thanh toán chuyển khoản qua quét mã QR để kích hoạt thẻ tự động.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {availablePackages.map(pkg => (
               <div key={pkg.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col gap-3">
@@ -231,7 +494,13 @@ export default function StudentPackagesPage() {
                   <span className="text-lg font-bold text-primary-700">
                     {pkg.coaching_type !== 'none' ? `${formatCurrency(pkg.price)} / buổi` : formatCurrency(pkg.price)}
                   </span>
-                  <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg">Liên hệ Admin</span>
+                  <Button
+                    onClick={() => handleBuyClick(pkg)}
+                    disabled={!!unpaidRegistration}
+                    className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs px-3 h-8 font-semibold"
+                  >
+                    Đăng ký mua
+                  </Button>
                 </div>
               </div>
             ))}
@@ -270,7 +539,7 @@ export default function StudentPackagesPage() {
                           <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium">1-1</span>
                         )}
                         {h.coachingType === 'group' && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded-full font-medium font-semibold">Nhóm</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded-full font-semibold font-semibold">Nhóm</span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -293,6 +562,78 @@ export default function StudentPackagesPage() {
           )}
         </div>
       </div>
+
+      {/* Dialog Đăng ký mua Gói học */}
+      <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>
+        <DialogContent className="sm:max-w-[420px] bg-white border border-gray-100 rounded-2xl shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-800">Đăng ký mua gói học</DialogTitle>
+            <DialogDescription className="text-xs text-gray-400">
+              Vui lòng chọn lớp học bạn muốn đăng ký sử dụng gói học này.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPkgForBuy && (
+            <div className="space-y-4 py-3 text-sm">
+              <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 border border-gray-100">
+                <p className="text-xs text-gray-500 font-medium">Gói học lựa chọn</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-gray-800">{selectedPkgForBuy.name}</p>
+                  <p className="font-extrabold text-primary-700">{formatCurrency(selectedPkgForBuy.price)}</p>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Hiệu lực: {selectedPkgForBuy.validity_days} ngày
+                  {selectedPkgForBuy.sessions_count ? ` · Số buổi: ${selectedPkgForBuy.sessions_count}` : ''}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="class_select" className="text-xs font-bold text-gray-600">Lớp học đăng ký *</Label>
+                <Select
+                  value={selectedClassId}
+                  onValueChange={setSelectedClassId}
+                >
+                  <SelectTrigger className="w-full bg-white border border-gray-200 rounded-xl text-xs font-semibold h-10">
+                    <SelectValue placeholder="-- Chọn lớp học --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeClasses.map(cls => (
+                      <SelectItem key={cls.id} value={cls.id} className="text-xs">
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {activeClasses.length === 0 && (
+                  <p className="text-[11px] text-red-500">Không tìm thấy lớp học hoạt động nào để chọn.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 border-t border-gray-50 pt-3 flex flex-row items-center justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => setBuyDialogOpen(false)}
+              disabled={isSubmitting}
+              className="rounded-xl text-xs h-9 text-gray-500 font-semibold"
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleConfirmBuy}
+              disabled={isSubmitting || !selectedClassId || activeClasses.length === 0}
+              className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs h-9 font-semibold"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                'Xác nhận mua'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -310,7 +651,6 @@ function ActivePackageCard({ card }: ActivePackageCardProps) {
     critical: 'from-red-600 to-red-800',
   }
 
-  // Suppress TS "possible undefined" for formatCurrency — sessionsTotal is checked
   const sessionsPercent = (card.sessionsTotal ?? 0) > 0
     ? Math.round(((card.sessionsRemaining ?? 0) / card.sessionsTotal!) * 100)
     : 0
@@ -390,4 +730,3 @@ function ActivePackageCard({ card }: ActivePackageCardProps) {
     </div>
   )
 }
-

@@ -1,10 +1,15 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthContext } from '@/contexts/AuthContext'
 import type { UserRole } from '@/types'
-import NotFoundPage from '@/pages/public/NotFoundPage'
 
 interface RequireRoleProps {
   role: UserRole
+}
+
+const ROLE_DASHBOARDS: Record<UserRole, string> = {
+  admin:   '/admin/dashboard',
+  coach:   '/coach/dashboard',
+  student: '/student/dashboard',
 }
 
 export function RequireRole({ role }: RequireRoleProps) {
@@ -13,7 +18,7 @@ export function RequireRole({ role }: RequireRoleProps) {
   if (isLoading) return <FullPageSpinner />
 
   if (!session) {
-    return <NotFoundPage />
+    return <Navigate to="/login" replace />
   }
 
   // Profile failed to load (network error, RLS block, etc.)
@@ -29,16 +34,10 @@ export function RequireRole({ role }: RequireRoleProps) {
   }
 
   if (profile.role !== role) {
-    return <NotFoundPage />
+    return <Navigate to={ROLE_DASHBOARDS[profile.role]} replace />
   }
 
   return <Outlet />
-}
-
-const ROLE_DASHBOARDS: Record<UserRole, string> = {
-  admin:   '/admin/dashboard',
-  coach:   '/coach/dashboard',
-  student: '/student/dashboard',
 }
 
 export function PublicRoute({ children }: { children: React.ReactNode }) {

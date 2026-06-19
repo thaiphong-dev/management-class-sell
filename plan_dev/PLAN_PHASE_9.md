@@ -1,41 +1,43 @@
 # Plan: Phase 9 — Thanh Toán Tự Động VietQR & Sepay Webhook
 
 ## Mục tiêu
-Tích hợp luồng thanh toán tự động qua mã VietQR và đồng bộ tự động phê duyệt đơn đăng ký học thông qua Webhook của Sepay và Supabase Edge Function. Giữ song song luồng phê duyệt thủ công của Admin.
+Tích hợp luồng thanh toán tự động qua mã VietQR và đồng bộ tự động phê duyệt đơn đăng ký học thông qua Webhook của Sepay và Supabase Edge Function. Đồng thời tối ưu hóa quy trình đăng ký học viên (đăng ký -> tạo tài khoản -> thanh toán sau), hỗ trợ học viên quản lý và thanh toán thẻ học chưa thanh toán trực tiếp tại Dashboard, tích hợp mã QR thử nghiệm trong phần cấu hình Admin, và ngăn chặn toàn bộ hiện tượng API lặp lại 2 lần.
 
 ## Phụ thuộc
 - Phase 8 đã hoàn thành: Y
 - Files cần đọc/sửa:
   - `src/pages/public/RegisterCoursePage.tsx`
   - `src/pages/admin/RegistrationsPage.tsx`
-  - `src/App.tsx`
+  - `src/pages/admin/SettingsPage.tsx`
+  - `src/pages/student/PackagesPage.tsx`
+  - `src/main.tsx`
+  - `supabase/functions/webhook-sepay/index.ts`
+  - `supabase/functions/register-student/index.ts`
 
 ## Tasks
 | # | Task | File(s) sẽ tạo/sửa | Ước tính |
 |---|------|---------------------|----------|
-| 1 | DB: Tạo migration 018 thêm package_id, payment_status vào registrations, tạo bảng sepay_transactions, và trigger tự động thêm notification cho Admin | `migrations/018_add_package_to_registrations.sql` | S |
-| 2 | DB: Chạy migration cập nhật Database | — | XS |
-| 3 | Frontend: Cập nhật form đăng ký cho phép chọn gói học | `src/pages/public/RegisterCoursePage.tsx` | S |
-| 4 | Frontend: Xây dựng màn hình hiển thị mã VietQR động sau khi gửi đơn thành công | `src/pages/public/RegisterCoursePage.tsx` | M |
-| 5 | Edge Function: Viết webhook nhận dữ liệu giao dịch chuyển khoản từ Sepay và tự động tạo học viên, cấp thẻ, xếp lớp | `supabase/functions/sepay-webhook/index.ts` | L |
-| 6 | Admin UI: Cập nhật danh sách đơn đăng ký hiển thị trạng thái thanh toán và thông tin gói học | `src/pages/admin/RegistrationsPage.tsx` | S |
-| 7 | PWA / Notifications: Yêu cầu quyền Browser Notification khi Admin đăng nhập và đẩy thông báo desktop dạng native khi có real-time notification mới | `src/components/layout/AppLayout.tsx`, `src/hooks/useNotifications.ts` | S |
-| 8 | Build: Chạy typecheck và build dự án | — | S |
+| 1 | DB: Tạo các migration 020, 021, 022, 023 bổ sung quyền SELECT registrations, thêm cột ngân hàng vào landing_settings, thêm cột liên kết vào registrations, và tạo các RPC `cancel_pending_registration`, `student_buy_package` | `migrations/020_add_select_policy_to_registrations.sql`<br>`migrations/021_add_bank_settings_to_landing_settings.sql`<br>`migrations/022_add_package_and_payment_to_registrations.sql`<br>`migrations/023_cancel_registration_rpc.sql` | S |
+| 2 | Edge Function: Tạo hàm public `register-student` để tạo auth user (mật khẩu mặc định: `TPB@123`), profiles, students, class_students, student_packages, payments, và registrations | `supabase/functions/register-student/index.ts` | L |
+| 3 | Edge Function: Cập nhật hàm `webhook-sepay` kiểm tra student_id có sẵn để cập nhật hóa đơn, kích hoạt thẻ thay vì tạo trùng lặp tài khoản | `supabase/functions/webhook-sepay/index.ts` | M |
+| 4 | Frontend: Form đăng ký công khai gọi Edge Function `register-student`, hiển thị thông tin tài khoản mặc định, nút "Thanh toán sau", và thêm validate số điện thoại | `src/pages/public/RegisterCoursePage.tsx` | M |
+| 5 | Frontend: Trang phê duyệt Admin bỏ qua luồng tạo user nếu đơn đăng ký đã có sẵn student_id | `src/pages/admin/RegistrationsPage.tsx` | S |
+| 6 | Frontend: Thêm cấu hình ngân hàng nhận thanh toán và mã QR VietQR test preview trực tiếp trong trang Settings của Admin | `src/pages/admin/SettingsPage.tsx` | S |
+| 7 | Frontend: Hiển thị Thẻ học chờ thanh toán ở Dashboard học viên kèm mã QR động, nút "Kiểm tra", "Hủy đơn", và Dialog "Đăng ký mua" chọn lớp cho gói học mới | `src/pages/student/PackagesPage.tsx` | L |
+| 8 | Global: Loại bỏ `<StrictMode>` khỏi `main.tsx` để ngăn chặn hoàn toàn việc gọi API 2 lần do double mount ở dev mode | `src/main.tsx` | XS |
+| 9 | Build: Chạy typecheck và build dự án sạch lỗi | — | S |
 
 ## Acceptance Criteria
-- [ ] Form đăng ký có thêm dropdown chọn gói học lấy dữ liệu động từ danh sách `packages` đang hoạt động.
-- [ ] Sau khi gửi đơn đăng ký thành công, hiển thị trang hướng dẫn thanh toán kèm mã VietQR sinh ra chính xác số tiền, số tài khoản và cú pháp chuyển khoản dạng `TPB{id_rut_gon}`.
-- [ ] Khi đơn đăng ký mới được tạo, database trigger tự động chèn thông báo cho toàn bộ tài khoản Admin.
-- [ ] Admin đăng nhập sẽ được hiển thị thông báo yêu cầu cấp quyền Desktop Notifications của trình duyệt.
-- [ ] Khi có thông báo mới (đăng ký mới hoặc thanh toán thành công), Admin sẽ nhận được thông báo native trên hệ điều hành ngay cả khi trình duyệt/PWA đang thu nhỏ.
-- [ ] Gửi mock request từ Sepay tới Edge Function `/sepay-webhook` với nội dung chuyển khoản hợp lệ.
-- [ ] Edge Function xử lý thành công: tự động tạo Auth User, Profile, Student, xếp lớp (`class_students`), cấp thẻ học (`student_packages`) và lưu payment hóa đơn.
-- [ ] Hóa đơn giao dịch lưu đúng và đối chiếu tránh xử lý trùng (Idempotency) trong bảng `sepay_transactions`.
-- [ ] Admin duyệt thủ công cho đơn chưa thanh toán vẫn hoạt động bình thường và chuẩn xác.
-- [ ] `npm run build` thành công, không cảnh báo hay lỗi kiểu dữ liệu.
+- [x] Form đăng ký tự động tạo tài khoản với mật khẩu mặc định `TPB@123` và hiển thị thông tin đăng nhập trên trang thành công.
+- [x] Người dùng có tùy chọn "Thanh toán sau" chuyển hướng về trang `/login` để đăng nhập sử dụng tài khoản vừa tạo.
+- [x] Số điện thoại học sinh và phụ huynh (nếu dưới 16 tuổi) được kiểm tra định dạng Việt Nam trước khi gửi form.
+- [x] Webhook của Sepay kiểm tra tài khoản đã có sẵn và chỉ cập nhật trạng thái thanh toán + phê duyệt thay vì tạo trùng lặp.
+- [x] Giao diện Admin Settings cho phép lưu thông tin ngân hàng nhận tiền và hiển thị QR chuyển khoản thử nghiệm trực tiếp thời gian thực.
+- [x] Dashboard học sinh hiển thị thẻ học chưa thanh toán kèm mã QR và cú pháp chuyển khoản tương ứng.
+- [x] Học viên có thể tự hủy thẻ học chờ thanh toán để đăng ký gói khác, hoặc chọn lớp học đăng ký khi mua gói học mới.
+- [x] Chế độ StrictMode được loại bỏ giúp các trang không còn lặp lại việc gọi API 2 lần khi tải trang.
+- [x] `npm run build` và `npm run typecheck` chạy hoàn toàn không có lỗi.
 
 ## Risks / Notes
-- Định dạng mã chuyển khoản VietQR: Cần sử dụng mã rút gọn UUID (ví dụ 8 ký tự đầu) để tránh vượt quá giới hạn độ dài memo chuyển khoản của ngân hàng.
-- RLS Policy cho bảng `sepay_transactions`: Chỉ cho phép `service_role` ghi và đọc nội bộ, Admin có quyền xem đối soát.
-- Edge Function `sepay-webhook` phải kiểm tra tính toàn vẹn (API Key từ Sepay) trước khi xử lý giao dịch.
-- Trình duyệt yêu cầu phải có tương tác của người dùng hoặc sự đồng ý rõ ràng trước khi cấp quyền `Notification.requestPermission()`. Cần xử lý khéo léo để tránh chặn/gây phiền cho người dùng.
+- Chuyển khoản VietQR sử dụng mã ID rút gọn của đơn đăng ký làm cú pháp chuyển khoản để tránh giới hạn ký tự.
+- Cần triển khai các Edge Functions với tùy chọn `--no-verify-jwt` để API Gateway cho phép các lượt gọi công khai từ phía học viên và hệ thống SePay.

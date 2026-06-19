@@ -29,6 +29,49 @@ interface PackageDetail {
   description: string | null
 }
 
+const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Không thể tạo canvas context'))
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', quality)
+        resolve(dataUrl)
+      }
+      img.onerror = (err) => reject(err)
+    }
+    reader.onerror = (err) => reject(err)
+  })
+}
+
 export default function RegisterCoursePage() {
   const [searchParams] = useSearchParams()
   const classIdParam = searchParams.get('classId')
@@ -49,6 +92,13 @@ export default function RegisterCoursePage() {
   const [failureReason, setFailureReason] = useState('')
   const [createdRegistrationId, setCreatedRegistrationId] = useState<string>('')
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [bankDetails, setBankDetails] = useState({
+    bank_id: 'MSB',
+    bank_account: '96886693012620',
+    bank_account_name: 'TU THAI PHONG',
+    bank_bin: '970426',
+    bank_branch: 'CN Hà Nội'
+  })
 
   // Form states
   const [clubName, setClubName] = useState('')
@@ -148,6 +198,25 @@ export default function RegisterCoursePage() {
         if (pkgError) throw pkgError
 
         setPackages(pkgData as PackageDetail[])
+
+        // Load bank settings from landing_settings
+        const { data: settingsData, error: settingsError } = await (supabase
+          .from('landing_settings') as any)
+          .select('bank_id, bank_account, bank_account_name, bank_bin, bank_branch')
+          .limit(1)
+          .maybeSingle()
+
+        if (settingsError) {
+          console.warn('Cannot load bank settings:', settingsError.message)
+        } else if (settingsData) {
+          setBankDetails({
+            bank_id: settingsData.bank_id || 'MSB',
+            bank_account: settingsData.bank_account || '96886693012620',
+            bank_account_name: settingsData.bank_account_name || 'TU THAI PHONG',
+            bank_bin: settingsData.bank_bin || '970426',
+            bank_branch: settingsData.bank_branch || ''
+          })
+        }
       } catch (err: any) {
         console.error('Error loading data:', err.message)
         toast({ title: 'Lỗi tải dữ liệu', description: err.message, variant: 'destructive' })
@@ -156,7 +225,15 @@ export default function RegisterCoursePage() {
       }
     }
     loadData()
-  }, [selectedClassId, toast])
+  }, [toast])
+
+  // Sync selected class when classes or selectedClassId changes
+  useEffect(() => {
+    if (selectedClassId && classes.length > 0) {
+      const cls = classes.find(c => c.id === selectedClassId)
+      if (cls) setSelectedClass(cls)
+    }
+  }, [selectedClassId, classes])
 
   // Realtime subscription for payment status updates
   useEffect(() => {
@@ -219,6 +296,40 @@ export default function RegisterCoursePage() {
       return
     }
 
+    // Phone number validations
+    const cleanPhone = mobilePhone.trim()
+    const phoneRegex = /^(0|\+84)[35789][0-9]{8}$/
+    
+    if (!cleanPhone) {
+      toast({ title: 'Vui lòng nhập số điện thoại di động', variant: 'destructive' })
+      return
+    }
+    
+    if (!phoneRegex.test(cleanPhone)) {
+      toast({
+        title: 'Số điện thoại di động không hợp lệ',
+        description: 'Vui lòng nhập đúng định dạng số điện thoại Việt Nam (ví dụ: 0901234567, 10 chữ số bắt đầu bằng số 0)',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (isUnder16()) {
+      const cleanParentPhone = (parentMobilePhone || '').trim()
+      if (!cleanParentPhone) {
+        toast({ title: 'Vui lòng nhập số điện thoại phụ huynh', variant: 'destructive' })
+        return
+      }
+      if (!phoneRegex.test(cleanParentPhone)) {
+        toast({
+          title: 'Số điện thoại phụ huynh không hợp lệ',
+          description: 'Vui lòng nhập đúng định dạng số điện thoại Việt Nam (ví dụ: 0901234567)',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+
     if (!responsibilityAccepted) {
       toast({ title: 'Bạn phải cam kết chịu trách nhiệm với thông tin đã cung cấp', variant: 'destructive' })
       return
@@ -259,39 +370,38 @@ export default function RegisterCoursePage() {
         return
       }
 
-      // Step 2: Convert photo to Base64 if selected
+      // Step 2: Convert and compress photo if selected
       let photoUrl = null
       if (photoFile) {
         try {
-          photoUrl = await new Promise<string>((resolve, reject) => {
-            const fileReader = new FileReader()
-            fileReader.readAsDataURL(photoFile)
-            fileReader.onload = () => resolve(fileReader.result as string)
-            fileReader.onerror = (error) => reject(error)
-          })
+          photoUrl = await compressImage(photoFile, 800, 800, 0.7)
         } catch (uploadError) {
           throw new Error('Không thể xử lý hình ảnh học sinh.')
         }
       }
 
-      // Step 3: Insert registration record
-      const { data: insertResult, error: insertError } = await (supabase
-        .from('registrations') as any)
-        .insert({
-          class_id: selectedClassId,
-          package_id: selectedPackageId,
-          payment_status: 'unpaid',
-          club_name: clubName,
+      // Step 3: Call register-student Edge Function to create student, package, and pending payment
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-student`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: 'TPB@123',
           first_name: firstName,
           last_name: lastName,
-          title,
+          mobile_phone: mobilePhone,
+          class_id: selectedClassId,
+          package_id: selectedPackageId,
+          club_name: clubName,
+          title: title || 'VĐV/HV',
           gender,
           date_of_birth: dateOfBirth,
           home_address: homeAddress,
           home_phone: homePhone,
-          mobile_phone: mobilePhone,
           emergency_phone: emergencyPhone,
-          email,
           ethnicity,
           q1_heart_condition: q1,
           q2_chest_pain_activity: q2,
@@ -313,15 +423,15 @@ export default function RegisterCoursePage() {
           parent_home_phone: isUnder16() ? parentHomePhone : null,
           parent_mobile_phone: isUnder16() ? parentMobilePhone : null,
           parent_email: isUnder16() ? parentEmail : null,
-          terms_accepted: true,
-          status: 'pending'
-        })
-        .select('id')
-        .single()
+        }),
+      })
 
-      if (insertError) throw insertError
+      const result = await res.json()
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.')
+      }
 
-      const insertedId = insertResult?.id || ''
+      const insertedId = result.registration_id || ''
       setCreatedRegistrationId(insertedId)
       setPaymentConfirmed(false)
       setSubmitStatus('success')
@@ -346,9 +456,9 @@ export default function RegisterCoursePage() {
   }
 
   if (submitStatus === 'success') {
-    const BANK_ID = 'MB'
-    const BANK_ACCOUNT = '0901234567'
-    const BANK_ACCOUNT_NAME = 'THAI PHONG BADMINTON'
+    const BANK_ID = bankDetails.bank_id
+    const BANK_ACCOUNT = bankDetails.bank_account
+    const BANK_ACCOUNT_NAME = bankDetails.bank_account_name
     const shortId = createdRegistrationId.substring(0, 8)
     const memo = `TPB${shortId}`
     const amount = selectedPackage ? Number(selectedPackage.price) : 0
@@ -411,6 +521,20 @@ export default function RegisterCoursePage() {
                 </div>
               </div>
 
+              {/* Account Credentials */}
+              <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl text-left space-y-2">
+                <p className="font-bold text-blue-900 text-xs flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" /> Thông tin tài khoản đã tạo:
+                </p>
+                <p className="text-[11px] text-gray-600 leading-normal">
+                  Học viên đã được khởi tạo tài khoản trên hệ thống. Quý phụ huynh/học viên có thể sử dụng thông tin này để đăng nhập và thanh toán sau:
+                </p>
+                <div className="bg-white p-3 rounded-xl border border-blue-100/60 text-xs font-mono space-y-1.5 text-gray-800 shadow-sm">
+                  <p><strong>Email:</strong> <span className="select-all font-bold text-blue-700">{email}</span></p>
+                  <p><strong>Mật khẩu:</strong> <span className="select-all font-bold text-blue-700">TPB@123</span></p>
+                </div>
+              </div>
+
               <div className="p-3.5 bg-yellow-50/60 border border-yellow-100 rounded-xl text-left text-[11px] text-yellow-800 leading-relaxed flex gap-2">
                 <Info className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div>
@@ -446,9 +570,15 @@ export default function RegisterCoursePage() {
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Tôi đã chuyển khoản - Kiểm tra trạng thái'}
                 </Button>
                 
+                <Link to="/login" className="w-full">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 font-bold">
+                    Thanh toán sau - Đăng nhập vào web
+                  </Button>
+                </Link>
+
                 <Link to="/">
                   <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-700 font-medium text-xs">
-                    Quay lại trang chủ (tài khoản sẽ được kích hoạt khi thanh toán xong)
+                    Quay lại trang chủ
                   </Button>
                 </Link>
               </div>
