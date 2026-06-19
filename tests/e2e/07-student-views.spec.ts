@@ -95,7 +95,7 @@ test.describe('Student – Attendance History', () => {
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('h2').filter({ hasText: 'Điểm danh' })).toBeVisible()
-    await expect(page.getByText('Lịch sử tham dự buổi học của bạn')).toBeVisible()
+    await expect(page.getByText('Lịch sử tham gia tập luyện và thời hạn thẻ học của bạn')).toBeVisible()
   })
 
   test('SA-EMPTY – Hiển thị empty state khi chưa có điểm danh', async ({ page }) => {

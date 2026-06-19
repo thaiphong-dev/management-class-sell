@@ -39,7 +39,7 @@ function groupByDate(sessions: ScheduleSession[]): Map<string, ScheduleSession[]
   return map
 }
 
-export default function StudentSchedulePage() {
+export default function StudentSchedulePage({ studentId }: { studentId?: string }) {
   const { profile } = useAuthContext()
   const { toast } = useToast()
   const [sessions, setSessions] = useState<ScheduleSession[]>([])
@@ -50,25 +50,30 @@ export default function StudentSchedulePage() {
     if (!profile) return
 
     async function loadSchedule() {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', profile!.id)
-        .maybeSingle()
+      let resolvedStudentId = studentId
 
-      if (studentError) {
-        console.error('Failed to fetch student record:', studentError.message)
-        setIsLoading(false)
-        return
+      if (!resolvedStudentId) {
+        const { data: studentData, error: studentError } = await (supabase
+          .from('students') as any)
+          .select('id')
+          .eq('user_id', profile!.id)
+          .maybeSingle()
+
+        if (studentError) {
+          console.error('Failed to fetch student record:', studentError.message)
+          setIsLoading(false)
+          return
+        }
+        resolvedStudentId = studentData?.id
       }
-      const student = studentData as { id: string } | null
-      if (!student) { setIsLoading(false); return }
+
+      if (!resolvedStudentId) { setIsLoading(false); return }
 
       // Get student's active class IDs + class names
-      const { data: classData } = await supabase
-        .from('class_students')
+      const { data: classData } = await (supabase
+        .from('class_students') as any)
         .select('class_id, classes(name)')
-        .eq('student_id', student.id)
+        .eq('student_id', resolvedStudentId)
         .eq('status', 'active')
 
       const classRows = (classData ?? []) as Array<{ class_id: string; classes: { name?: string } | null }>
@@ -111,7 +116,7 @@ export default function StudentSchedulePage() {
     }
 
     loadSchedule()
-  }, [profile, toast])
+  }, [profile, toast, studentId])
 
   const grouped = groupByDate(sessions)
 

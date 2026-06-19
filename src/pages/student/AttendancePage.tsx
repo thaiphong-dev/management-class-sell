@@ -33,7 +33,7 @@ const STATUS_CONFIG = {
   excused: { label: 'Phép',   icon: BookOpen,      className: 'bg-blue-50 text-blue-700 border-blue-200' },
 }
 
-export default function StudentAttendancePage() {
+export default function StudentAttendancePage({ studentId }: { studentId?: string }) {
   const { profile } = useAuthContext()
   const { toast } = useToast()
   
@@ -46,28 +46,33 @@ export default function StudentAttendancePage() {
 
     async function loadData() {
       try {
-        const { data: studentData, error: studentError } = await supabase
-          .from('students')
-          .select('id')
-          .eq('user_id', profile!.id)
-          .maybeSingle()
+        let resolvedStudentId = studentId
 
-        if (studentError) throw studentError
-        const student = studentData as { id: string } | null
-        if (!student) {
+        if (!resolvedStudentId) {
+          const { data: studentData, error: studentError } = await (supabase
+            .from('students') as any)
+            .select('id')
+            .eq('user_id', profile!.id)
+            .maybeSingle()
+
+          if (studentError) throw studentError
+          resolvedStudentId = studentData?.id
+        }
+
+        if (!resolvedStudentId) {
           setIsLoading(false)
           return
         }
 
         // Fetch active package and attendance history in parallel
         const [activePkgRes, attendanceRes] = await Promise.all([
-          supabase
-            .from('active_student_packages')
+          (supabase
+            .from('active_student_packages') as any)
             .select('id, package_name, package_type, sessions_remaining, sessions_total, expires_at, activated_at')
-            .eq('student_id', student.id)
+            .eq('student_id', resolvedStudentId)
             .maybeSingle(),
-          supabase
-            .from('attendance')
+          (supabase
+            .from('attendance') as any)
             .select(`
               id, status, checked_at, notes,
               sessions(scheduled_at, class_id,
@@ -76,7 +81,7 @@ export default function StudentAttendancePage() {
                 )
               )
             `)
-            .eq('student_id', student.id)
+            .eq('student_id', resolvedStudentId)
             .order('checked_at', { ascending: false })
             .limit(100)
         ])
@@ -110,7 +115,7 @@ export default function StudentAttendancePage() {
           return {
             id:          r.id as string,
             checked_at:  r.checked_at as string,
-            status:      r.status as AttendanceRecord['status'],
+            status:      r.status as 'present' | 'absent' | 'late' | 'excused',
             className:   (cls?.name as string) ?? '—',
             scheduledAt: (session?.scheduled_at as string) ?? (r.checked_at as string),
             coachName:   coachProfile?.full_name ?? null,
@@ -128,7 +133,7 @@ export default function StudentAttendancePage() {
     }
 
     loadData()
-  }, [profile, toast])
+  }, [profile, toast, studentId])
 
   const presentCount = records.filter(r => r.status === 'present').length
   const lateCount    = records.filter(r => r.status === 'late').length

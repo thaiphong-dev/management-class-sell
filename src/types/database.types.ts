@@ -375,7 +375,7 @@ export type Database = {
           full_name: string
           phone: string | null
           avatar_url: string | null
-          role: 'admin' | 'coach' | 'student'
+          role: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
           created_at: string
           updated_at: string
         }
@@ -384,7 +384,7 @@ export type Database = {
           full_name: string
           phone?: string | null
           avatar_url?: string | null
-          role: 'admin' | 'coach' | 'student'
+          role: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
           created_at?: string
           updated_at?: string
         }
@@ -393,7 +393,7 @@ export type Database = {
           full_name?: string
           phone?: string | null
           avatar_url?: string | null
-          role?: 'admin' | 'coach' | 'student'
+          role?: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
           created_at?: string
           updated_at?: string
         }
@@ -525,6 +525,7 @@ export type Database = {
           emergency_contact: string | null
           notes: string | null
           status: 'active' | 'inactive'
+          parent_id: string | null
           created_at: string
         }
         Insert: {
@@ -535,6 +536,7 @@ export type Database = {
           emergency_contact?: string | null
           notes?: string | null
           status?: 'active' | 'inactive'
+          parent_id?: string | null
           created_at?: string
         }
         Update: {
@@ -545,6 +547,25 @@ export type Database = {
           emergency_contact?: string | null
           notes?: string | null
           status?: 'active' | 'inactive'
+          parent_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      parents: {
+        Row: {
+          id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
           created_at?: string
         }
         Relationships: []

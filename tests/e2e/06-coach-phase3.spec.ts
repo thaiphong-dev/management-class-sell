@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Coach – Attendance List', () => {
   test('A-PAGE – Trang Điểm danh hiển thị đúng', async ({ page }) => {
-    await page.getByRole('link', { name: 'Điểm danh' }).click()
+    await page.getByRole('link', { name: 'Điểm danh', exact: true }).click()
     await expect(page).toHaveURL(/\/coach\/attendance/)
     await page.waitForLoadState('networkidle')
 
@@ -25,14 +25,14 @@ test.describe('Coach – Attendance List', () => {
   })
 
   test('A-EMPTY – Hiển thị empty state khi không có buổi học', async ({ page }) => {
-    await page.getByRole('link', { name: 'Điểm danh' }).click()
+    await page.getByRole('link', { name: 'Điểm danh', exact: true }).click()
     await page.waitForLoadState('networkidle')
 
     const sessionRows = page.locator('.divide-y > div')
     const emptyState = page.getByText('Không có buổi học nào trong khoảng thời gian này')
 
-    // Wait for load to finish (data could be empty)
-    await page.waitForTimeout(500)
+    // Wait for load to finish (loading skeletons detach)
+    await page.locator('.animate-pulse').first().waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
     const count = await sessionRows.count()
     if (count === 0) {
       await expect(emptyState).toBeVisible()
@@ -41,11 +41,12 @@ test.describe('Coach – Attendance List', () => {
   })
 
   test('A-SESSION-ROW – Session rows hiển thị đủ thông tin', async ({ page }) => {
-    await page.getByRole('link', { name: 'Điểm danh' }).click()
+    await page.getByRole('link', { name: 'Điểm danh', exact: true }).click()
     await page.waitForLoadState('networkidle')
 
     const sessionRows = page.locator('.divide-y > div')
-    await page.waitForTimeout(500)
+    // Wait for load to finish (loading skeletons detach)
+    await page.locator('.animate-pulse').first().waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
     const count = await sessionRows.count()
     if (count === 0) {
       test.skip()
@@ -58,7 +59,7 @@ test.describe('Coach – Attendance List', () => {
   })
 
   test('A-SHEET-NAV – Click Điểm danh điều hướng đến attendance sheet', async ({ page }) => {
-    await page.getByRole('link', { name: 'Điểm danh' }).click()
+    await page.getByRole('link', { name: 'Điểm danh', exact: true }).click()
     await page.waitForLoadState('networkidle')
 
     const attendanceBtns = page.getByRole('button', { name: 'Điểm danh' })
@@ -313,7 +314,7 @@ test.describe('Coach – Progress Evaluation', () => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function navigateToAttendanceSheet(page: Page): Promise<boolean> {
-  await page.getByRole('link', { name: 'Điểm danh' }).click()
+  await page.getByRole('link', { name: 'Điểm danh', exact: true }).click()
   await page.waitForLoadState('networkidle')
 
   const attendanceBtns = page.getByRole('button', { name: 'Điểm danh' })

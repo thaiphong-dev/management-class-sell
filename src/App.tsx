@@ -20,16 +20,29 @@ import CoachAttendancePage      from '@/pages/coach/AttendancePage'
 import CoachAttendanceSheetPage from '@/pages/coach/AttendanceSheetPage'
 import CoachProgressPage        from '@/pages/coach/ProgressPage'
 import CoachScanAttendancePage  from '@/pages/coach/ScanAttendancePage'
+import CoachLessonPlanLibraryPage from '@/pages/coach/LessonPlanLibraryPage'
+import CoachLessonPlanFormPage    from '@/pages/coach/LessonPlanFormPage'
+import CoachAssistantsPage        from '@/pages/coach/AssistantsManagementPage'
+import CoachStudentsPage          from '@/pages/coach/StudentsPage'
 // Student pages
 import StudentDashboardPage  from '@/pages/student/DashboardPage'
 import StudentSchedulePage   from '@/pages/student/SchedulePage'
 import StudentAttendancePage from '@/pages/student/AttendancePage'
 import StudentProgressPage   from '@/pages/student/ProgressPage'
 import StudentPackagesPage   from '@/pages/student/PackagesPage'
+// Parent pages
+import ParentDashboardPage from '@/pages/parent/ParentDashboardPage'
+import ParentFamilyPage    from '@/pages/parent/ParentFamilyPage'
+import ParentPackagesPage  from '@/pages/parent/ParentPackagesPage'
+import ParentProgressPage  from '@/pages/parent/ParentProgressPage'
+import ParentSchedulePage  from '@/pages/parent/ParentSchedulePage'
+import ParentAttendancePage from '@/pages/parent/ParentAttendancePage'
+import RegisterPage        from '@/pages/auth/RegisterPage'
 // Public & Settings pages
 import LandingPage from '@/pages/public/LandingPage'
 import AdminSettingsPage from '@/pages/admin/SettingsPage'
 import RegisterCoursePage from '@/pages/public/RegisterCoursePage'
+import SharedLessonPage from '@/pages/public/SharedLessonPage'
 import NotFoundPage from '@/pages/public/NotFoundPage'
 
 function DefaultRoute() {
@@ -51,6 +64,7 @@ function DefaultRoute() {
       admin:   '/admin/dashboard',
       coach:   '/coach/dashboard',
       student: '/student/dashboard',
+      parent:  '/parent/dashboard',
     }
     return <Navigate to={ROLE_DASHBOARDS[profile.role] || '/'} replace />
   }
@@ -73,9 +87,23 @@ export default function App() {
             }
           />
           <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            }
+          />
+          <Route
             path="/register-course"
             element={
               <RegisterCoursePage />
+            }
+          />
+          <Route
+            path="/shared/lessons/:id"
+            element={
+              <SharedLessonPage />
             }
           />
 
@@ -94,17 +122,22 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* Coach */}
-          <Route element={<RequireRole role="coach" />}>
+          {/* Coach & Assistant */}
+          <Route element={<RequireRole role={['coach', 'assistant']} />}>
             <Route path="/coach" element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard"                                          element={<CoachDashboardPage />} />
               <Route path="classes"                                            element={<CoachClassesPage />} />
+              <Route path="students"                                           element={<CoachStudentsPage />} />
               <Route path="classes/:classId/sessions"                          element={<CoachSessionsPage />} />
               <Route path="classes/:classId/sessions/:sessionId/attendance"    element={<CoachAttendanceSheetPage />} />
               <Route path="attendance"                                         element={<CoachAttendancePage />} />
               <Route path="attendance/scan"                                    element={<CoachScanAttendancePage />} />
               <Route path="progress"                                           element={<CoachProgressPage />} />
+              <Route path="lesson-plans"                                       element={<CoachLessonPlanLibraryPage />} />
+              <Route path="lesson-plans/new"                                   element={<CoachLessonPlanFormPage />} />
+              <Route path="lesson-plans/:id/edit"                              element={<CoachLessonPlanFormPage />} />
+              <Route path="assistants"                                         element={<CoachAssistantsPage />} />
             </Route>
           </Route>
 
@@ -117,6 +150,19 @@ export default function App() {
               <Route path="attendance" element={<StudentAttendancePage />} />
               <Route path="progress"   element={<StudentProgressPage />} />
               <Route path="packages"   element={<StudentPackagesPage />} />
+            </Route>
+          </Route>
+
+          {/* Parent */}
+          <Route element={<RequireRole role="parent" />}>
+            <Route path="/parent" element={<AppLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"  element={<ParentDashboardPage />} />
+              <Route path="family"     element={<ParentFamilyPage />} />
+              <Route path="schedule"   element={<ParentSchedulePage />} />
+              <Route path="attendance" element={<ParentAttendancePage />} />
+              <Route path="packages"   element={<ParentPackagesPage />} />
+              <Route path="progress"   element={<ParentProgressPage />} />
             </Route>
           </Route>
 

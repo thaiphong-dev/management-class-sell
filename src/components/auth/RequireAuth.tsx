@@ -3,13 +3,15 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import type { UserRole } from '@/types'
 
 interface RequireRoleProps {
-  role: UserRole
+  role: UserRole | UserRole[]
 }
 
 const ROLE_DASHBOARDS: Record<UserRole, string> = {
   admin:   '/admin/dashboard',
   coach:   '/coach/dashboard',
+  assistant: '/coach/dashboard',
   student: '/student/dashboard',
+  parent:  '/parent/dashboard',
 }
 
 export function RequireRole({ role }: RequireRoleProps) {
@@ -33,7 +35,8 @@ export function RequireRole({ role }: RequireRoleProps) {
     return <ProfileErrorScreen onSignOut={signOut} />
   }
 
-  if (profile.role !== role) {
+  const allowedRoles = Array.isArray(role) ? role : [role]
+  if (!allowedRoles.includes(profile.role)) {
     return <Navigate to={ROLE_DASHBOARDS[profile.role]} replace />
   }
 

@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import { useLocation, useMatch } from 'react-router-dom'
-import { Menu, Bell, BellOff, CheckCheck } from 'lucide-react'
+import { Menu, Bell, BellOff, CheckCheck, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useAppStore } from '@/stores/useAppStore'
 import { useNotifications } from '@/hooks/useNotifications'
+import { supabase } from '@/lib/supabase'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const PAGE_TITLES: Record<string, string> = {
   '/admin/dashboard':  'Dashboard',
@@ -22,6 +24,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/student/attendance': 'Điểm danh',
   '/student/progress':   'Tiến độ',
   '/student/packages':   'Thẻ học',
+  '/parent/dashboard': 'Dashboard Phụ huynh',
+  '/parent/family':    'Quản lý con',
+  '/parent/packages':  'Thẻ học của con',
+  '/parent/progress':  'Tiến độ của con',
+  '/parent/schedule':  'Lịch học của con',
+  '/parent/attendance': 'Điểm danh của con',
 }
 
 function useDynamicTitle(pathname: string): string {
@@ -50,6 +58,99 @@ const TYPE_ICON: Record<string, string> = {
   package_grant:    '🎁',
   class_enrolled:   '🏸',
   default:          '🔔',
+}
+
+interface ChildOption {
+  id: string
+  name: string
+}
+
+function ChildSwitcher() {
+  const { profile } = useAuthContext()
+  const { activeChildId, setActiveChildId } = useAppStore()
+  const [children, setChildren] = useState<ChildOption[]>([])
+  const [loading, setLoading] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    if (!profile || profile.role !== 'parent') return
+    const profileId = profile.id
+
+    async function fetchChildren() {
+      setLoading(true)
+      try {
+        const { data: parentData, error: parentError } = await (supabase
+          .from('parents') as any)
+          .select('id')
+          .eq('user_id', profileId)
+          .single()
+
+        if (parentError || !parentData) {
+          console.error('Failed to fetch parent:', parentError?.message)
+          return
+        }
+
+        const { data, error } = await (supabase
+          .from('students') as any)
+          .select(`
+            id,
+            profiles (
+              full_name
+            )
+          `)
+          .eq('parent_id', parentData.id)
+
+        if (error) {
+          console.error('Failed to fetch children:', error.message)
+          return
+        }
+
+        const formatted: ChildOption[] = (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.profiles?.full_name || 'Học viên'
+        }))
+
+        setChildren(formatted)
+
+        if (formatted.length > 0) {
+          const currentExists = formatted.some(c => c.id === activeChildId)
+          if (!currentExists) {
+            setActiveChildId(formatted[0].id)
+          }
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchChildren()
+  }, [profile, activeChildId, setActiveChildId, location.pathname])
+
+  if (profile?.role !== 'parent' || children.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-2 mr-2">
+      <Users className="w-4 h-4 text-gray-500" />
+      <Select
+        value={activeChildId || ''}
+        onValueChange={(val) => setActiveChildId(val)}
+        disabled={loading}
+      >
+        <SelectTrigger className="w-[160px] h-9 bg-gray-50/50 border-gray-200 text-xs font-semibold rounded-xl focus:ring-1 focus:ring-red-500/20 focus:border-red-500/30">
+          <SelectValue placeholder="Chọn con" />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl border-gray-200">
+          {children.map((c) => (
+            <SelectItem key={c.id} value={c.id} className="text-xs focus:bg-red-50 focus:text-red-700 rounded-lg">
+              {c.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
 }
 
 export function Header() {
@@ -98,6 +199,9 @@ export function Header() {
 
       {/* Page title */}
       <h1 className="font-semibold text-gray-900 text-lg flex-1">{pageTitle}</h1>
+
+      {/* Child Switcher for Parents */}
+      <ChildSwitcher />
 
       {/* Notification bell */}
       <div className="relative">

@@ -26,7 +26,7 @@ const SKILL_LABELS: Record<keyof SkillScores, string> = {
   fitness:   'Thể lực',
 }
 
-export default function StudentProgressPage() {
+export default function StudentProgressPage({ studentId }: { studentId?: string } = {}) {
   const { profile } = useAuthContext()
   const { toast } = useToast()
   const [evals, setEvals] = useState<EvalRecord[]>([])
@@ -36,19 +36,24 @@ export default function StudentProgressPage() {
     if (!profile) return
 
     async function loadProgress() {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', profile!.id)
-        .maybeSingle()
+      let resolvedStudentId = studentId
 
-      if (studentError) {
-        console.error('Failed to fetch student record:', studentError.message)
-        setIsLoading(false)
-        return
+      if (!resolvedStudentId) {
+        const { data: studentData, error: studentError } = await (supabase
+          .from('students') as any)
+          .select('id')
+          .eq('user_id', profile!.id)
+          .maybeSingle()
+
+        if (studentError) {
+          console.error('Failed to fetch student record:', studentError.message)
+          setIsLoading(false)
+          return
+        }
+        resolvedStudentId = studentData?.id
       }
-      const student = studentData as { id: string } | null
-      if (!student) { setIsLoading(false); return }
+
+      if (!resolvedStudentId) { setIsLoading(false); return }
 
       const { data, error } = await supabase
         .from('progress_evaluations')
@@ -56,7 +61,7 @@ export default function StudentProgressPage() {
           id, created_at, overall_score, skills, notes,
           coaches(user_id, profiles(full_name))
         `)
-        .eq('student_id', student.id)
+        .eq('student_id', resolvedStudentId)
         .order('created_at', { ascending: false })
         .limit(20)
 
@@ -84,7 +89,7 @@ export default function StudentProgressPage() {
     }
 
     loadProgress()
-  }, [profile, toast])
+  }, [profile, toast, studentId])
 
   const latestEval = evals[0]
   const latestSkills: Partial<SkillScores> = (latestEval?.skills ?? {})

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, BookOpen, CreditCard,
-  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X, Settings, FileText, QrCode
+  BarChart3, ClipboardList, TrendingUp, Calendar, LogOut, X, Settings, FileText, QrCode, GraduationCap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -28,9 +28,20 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
   coach: [
     { icon: LayoutDashboard, label: 'Dashboard',    path: '/coach/dashboard' },
     { icon: BookOpen,        label: 'Lớp của tôi',  path: '/coach/classes' },
+    { icon: GraduationCap,   label: 'Học viên',     path: '/coach/students' },
     { icon: ClipboardList,   label: 'Điểm danh',    path: '/coach/attendance' },
     { icon: QrCode,          label: 'Quét QR điểm danh', path: '/coach/attendance/scan' },
+    { icon: FileText,        label: 'Thư viện giáo án', path: '/coach/lesson-plans' },
+    { icon: Users,           label: 'Quản lý Trợ giảng', path: '/coach/assistants' },
     { icon: TrendingUp,      label: 'Đánh giá',     path: '/coach/progress' },
+  ],
+  assistant: [
+    { icon: LayoutDashboard, label: 'Dashboard',    path: '/coach/dashboard' },
+    { icon: BookOpen,        label: 'Lớp trợ giảng', path: '/coach/classes' },
+    { icon: GraduationCap,   label: 'Học viên',     path: '/coach/students' },
+    { icon: ClipboardList,   label: 'Điểm danh',    path: '/coach/attendance' },
+    { icon: QrCode,          label: 'Quét QR điểm danh', path: '/coach/attendance/scan' },
+    { icon: FileText,        label: 'Xem giáo án',   path: '/coach/lesson-plans' },
   ],
   student: [
     { icon: LayoutDashboard, label: 'Dashboard',    path: '/student/dashboard' },
@@ -39,12 +50,22 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { icon: TrendingUp,      label: 'Tiến độ',      path: '/student/progress' },
     { icon: CreditCard,      label: 'Thẻ học',      path: '/student/packages' },
   ],
+  parent: [
+    { icon: LayoutDashboard, label: 'Dashboard',    path: '/parent/dashboard' },
+    { icon: Users,           label: 'Quản lý con',   path: '/parent/family' },
+    { icon: Calendar,        label: 'Lịch học của con', path: '/parent/schedule' },
+    { icon: ClipboardList,   label: 'Điểm danh của con', path: '/parent/attendance' },
+    { icon: CreditCard,      label: 'Thẻ học của con', path: '/parent/packages' },
+    { icon: TrendingUp,      label: 'Tiến độ của con', path: '/parent/progress' },
+  ],
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin:   'Quản trị viên',
   coach:   'Huấn luyện viên',
+  assistant: 'Trợ giảng',
   student: 'Học viên',
+  parent:  'Phụ huynh',
 }
 
 export function Sidebar() {

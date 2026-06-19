@@ -34,10 +34,12 @@ interface UserRow extends Profile {
 const ROLE_ICONS: Record<UserRole, React.ElementType> = {
   admin:   Shield,
   coach:   Dumbbell,
+  assistant: Users,
   student: GraduationCap,
+  parent:  Users,
 }
 const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Admin', coach: 'HLV', student: 'Học viên',
+  admin: 'Admin', coach: 'HLV', assistant: 'Trợ giảng', student: 'Học viên', parent: 'Phụ huynh',
 }
 const SKILL_LABELS: Record<string, string> = {
   beginner: 'Cơ bản', intermediate: 'Trung cấp', advanced: 'Nâng cao',
@@ -254,8 +256,9 @@ export default function UsersPage() {
                   </span>
                 )}
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-                  user.role === 'admin'   ? 'bg-purple-100 text-purple-700' :
-                  user.role === 'coach'   ? 'bg-court-100 text-court-700' :
+                  user.role === 'admin'     ? 'bg-purple-100 text-purple-700' :
+                  user.role === 'coach'     ? 'bg-court-100 text-court-700' :
+                  (user.role as string) === 'assistant' ? 'bg-orange-100 text-orange-700' :
                   'bg-blue-100 text-blue-700'
                 }`}>
                   <RoleIcon className="w-3 h-3" />
@@ -313,15 +316,17 @@ export default function UsersPage() {
         </div>
 
         <Tabs defaultValue="all">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="all">Tất cả ({filtered.length})</TabsTrigger>
             <TabsTrigger value="admin">Admin ({filtered.filter(u => u.role === 'admin').length})</TabsTrigger>
             <TabsTrigger value="coach">HLV ({filtered.filter(u => u.role === 'coach').length})</TabsTrigger>
+            <TabsTrigger value="assistant">Trợ giảng ({filtered.filter(u => (u.role as string) === 'assistant').length})</TabsTrigger>
             <TabsTrigger value="student">Học viên ({filtered.filter(u => u.role === 'student').length})</TabsTrigger>
           </TabsList>
           <TabsContent value="all">{renderTab('all')}</TabsContent>
           <TabsContent value="admin">{renderTab('admin')}</TabsContent>
           <TabsContent value="coach">{renderTab('coach')}</TabsContent>
+          <TabsContent value="assistant">{renderTab('assistant')}</TabsContent>
           <TabsContent value="student">{renderTab('student')}</TabsContent>
         </Tabs>
       </div>
@@ -357,6 +362,7 @@ export default function UsersPage() {
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="coach">Huấn luyện viên</SelectItem>
+                    <SelectItem value="assistant">Trợ giảng</SelectItem>
                     <SelectItem value="student">Học viên</SelectItem>
                   </SelectContent>
                 </Select>

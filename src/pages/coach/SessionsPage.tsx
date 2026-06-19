@@ -13,8 +13,17 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { formatDateTime } from '@/lib/utils'
 import type { Session, Court, Class } from '@/types'
 
+interface LessonPlanMinimal {
+  id: string
+  title: string
+  creator_id: string
+  is_public: boolean
+}
+
 interface SessionRow extends Session {
   courtName: string | null
+  lesson_plan_id?: string | null
+  lessonPlanTitle?: string | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
@@ -33,6 +42,8 @@ export default function CoachSessionsPage() {
   const [classInfo, setClassInfo] = useState<Class | null>(null)
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [courts, setCourts] = useState<Court[]>([])
+  const [lessonPlans, setLessonPlans] = useState<LessonPlanMinimal[]>([])
+  const [editLessonPlanId, setEditLessonPlanId] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -43,6 +54,7 @@ export default function CoachSessionsPage() {
     duration_min: '90',
     court_id: '',
     notes: '',
+    lesson_plan_id: '',
   })
 
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; session: SessionRow | null }>({
@@ -53,38 +65,66 @@ export default function CoachSessionsPage() {
   async function loadData() {
     if (!classId || !profile) return
 
-    // First fetch the coach record to verify ownership
-    const { data: coachData } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', profile.id)
-      .maybeSingle()
-    const coachId = (coachData as { id: string } | null)?.id ?? null
-
-    const [classRes, sessionRes, courtRes] = await Promise.all([
-      supabase.from('classes').select('*').eq('id', classId).single(),
-      supabase.from('sessions')
-        .select('*, courts(name)')
-        .eq('class_id', classId)
-        .order('scheduled_at', { ascending: false }),
-      supabase.from('courts').select('*').eq('status', 'available'),
-    ])
-
+    // Fetch class details first
+    const classRes = await supabase.from('classes').select('*').eq('id', classId).single()
     if (classRes.error) {
       console.error('Failed to fetch class:', classRes.error.message)
       toast({ title: 'Lỗi tải lớp học', description: classRes.error.message, variant: 'destructive' })
       navigate('/coach/classes')
       return
     }
-
-    // Verify this class belongs to the current coach.
-    // If coachId is null (fetch failed / not a coach), block access regardless.
     const cls = classRes.data as Class
-    if (!coachId || cls.coach_id !== coachId) {
-      toast({ title: 'Không có quyền truy cập', description: 'Lớp này không thuộc quyền quản lý của bạn.', variant: 'destructive' })
+
+    // Verify this class belongs to the current coach or is managed by their leader
+    let isAuthorized = false
+
+    if ((profile.role as string) === 'assistant') {
+      if (cls.coach_id) {
+        const { data: classCoachData } = await (supabase.from('coaches') as any)
+          .select('user_id')
+          .eq('id', cls.coach_id)
+          .maybeSingle()
+
+        const classCoachUserId = classCoachData?.user_id
+        if (classCoachUserId) {
+          const { data: link } = await (supabase.from('coach_assistants') as any)
+            .select('id')
+            .eq('coach_id', classCoachUserId)
+            .eq('assistant_id', profile.id)
+            .maybeSingle()
+
+          if (link) {
+            isAuthorized = true
+          }
+        }
+      }
+    } else {
+      const { data: coachData } = await (supabase.from('coaches') as any)
+        .select('id')
+        .eq('user_id', profile.id)
+        .maybeSingle()
+      const coachId = (coachData as { id: string } | null)?.id ?? null
+
+      if (coachId && cls.coach_id === coachId) {
+        isAuthorized = true
+      }
+    }
+
+    if (!isAuthorized) {
+      toast({ title: 'Không có quyền truy cập', description: 'Lớp này không thuộc quyền quản lý của bạn hoặc trưởng nhóm của bạn.', variant: 'destructive' })
       navigate('/coach/classes')
       return
     }
+
+    const [sessionRes, courtRes, planRes] = await Promise.all([
+      (supabase.from('sessions') as any)
+        .select('*, courts(name), lesson_plans(title)')
+        .eq('class_id', classId)
+        .order('scheduled_at', { ascending: false }),
+      supabase.from('courts').select('*').eq('status', 'available'),
+      (supabase.from('lesson_plans') as any)
+        .select('id, title, creator_id, is_public')
+    ])
 
     if (sessionRes.error) {
       console.error('Failed to load sessions:', sessionRes.error.message)
@@ -93,17 +133,23 @@ export default function CoachSessionsPage() {
 
     setClassInfo(cls)
 
-    const rows: SessionRow[] = ((sessionRes.data ?? []) as unknown[]).map((raw: unknown) => {
-      const r = raw as Record<string, unknown>
+    const rows: SessionRow[] = ((sessionRes.data ?? []) as unknown[]).map((raw: any) => {
+      const r = raw as Record<string, any>
       const courts = r.courts as { name?: string } | null
-      return { ...(r as Session), courtName: courts?.name ?? null }
+      const lessonPlans = r.lesson_plans as { title?: string } | null
+      return {
+        ...(r as Session),
+        courtName: courts?.name ?? null,
+        lessonPlanTitle: lessonPlans?.title ?? null
+      }
     })
     setSessions(rows)
     setCourts((courtRes.data ?? []) as Court[])
+    setLessonPlans((planRes.data ?? []) as LessonPlanMinimal[])
 
     // Pre-fill court from class default
     if (cls.court_id) {
-      setSessionForm(prev => ({ ...prev, court_id: cls.court_id ?? '' }))
+      setSessionForm(prev => ({ ...prev, court_id: cls.court_id ?? '', lesson_plan_id: '' }))
     }
 
     setIsLoading(false)
@@ -119,25 +165,32 @@ export default function CoachSessionsPage() {
 
     const scheduledAt = new Date(`${sessionForm.scheduled_date}T${sessionForm.scheduled_time}`)
 
-    const { error } = await supabase.from('sessions').insert({
+    const { error } = await (supabase.from('sessions') as any).insert({
       class_id: classId,
       scheduled_at: scheduledAt.toISOString(),
       duration_min: parseInt(sessionForm.duration_min) || 90,
       court_id: sessionForm.court_id || null,
       notes: sessionForm.notes.trim() || null,
+      lesson_plan_id: sessionForm.lesson_plan_id || null,
       created_by: profile?.id ?? null,
-    } as never)
+    })
 
     if (error) {
       toast({ title: 'Lỗi tạo buổi học', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Đã tạo buổi học mới' })
       setCreateDialog(false)
-      setSessionForm({ scheduled_date: '', scheduled_time: '', duration_min: '90', court_id: classInfo?.court_id ?? '', notes: '' })
+      setSessionForm({ scheduled_date: '', scheduled_time: '', duration_min: '90', court_id: classInfo?.court_id ?? '', notes: '', lesson_plan_id: '' })
       await loadData()
     }
     setSaving(false)
   }
+
+  useEffect(() => {
+    if (statusDialog.session) {
+      setEditLessonPlanId((statusDialog.session as any).lesson_plan_id || 'none')
+    }
+  }, [statusDialog.session])
 
   async function updateSessionStatus(sessionId: string, status: Session['status'], notes?: string) {
     const updatePayload: Record<string, unknown> = { status }
@@ -187,26 +240,60 @@ export default function CoachSessionsPage() {
                   {s.duration_min} phút · {s.courtName ?? 'Chưa có sân'}
                   {s.notes ? ` · ${s.notes}` : ''}
                 </p>
+                {s.lessonPlanTitle && (
+                  <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center text-[10px] font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">
+                      Giáo án: {s.lessonPlanTitle}
+                    </span>
+                    {profile?.role === 'coach' ? (
+                      <button
+                        onClick={() => navigate(`/coach/lesson-plans/${s.lesson_plan_id}/edit`)}
+                        className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline font-medium"
+                      >
+                        Sửa giáo án
+                      </button>
+                    ) : (
+                      <a
+                        href={`/shared/lessons/${s.lesson_plan_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline font-medium"
+                      >
+                        Xem giáo án
+                      </a>
+                    )}
+                    <a
+                      href={`/shared/lessons/${s.lesson_plan_id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-gray-500 hover:text-gray-700 hover:underline"
+                    >
+                      Chia sẻ
+                    </a>
+                  </div>
+                )}
               </div>
               <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${cfg.className}`}>
                 {cfg.label}
               </span>
-              {(s.status === 'scheduled' || s.status === 'in_progress') && (
-                <div className="flex gap-1.5 flex-shrink-0">
+              <div className="flex gap-1.5 flex-shrink-0">
+                {(s.status === 'scheduled' || s.status === 'in_progress') && (
                   <button
                     onClick={() => navigate(`/coach/classes/${classId}/sessions/${s.id}/attendance`)}
                     className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
                   >
                     Điểm danh
                   </button>
+                )}
+                {profile?.role === 'coach' && (s.status === 'scheduled' || s.status === 'in_progress') && (
                   <button
                     onClick={() => setStatusDialog({ open: true, session: s })}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600 transition-colors"
                   >
                     Cập nhật
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )
         })}
@@ -230,12 +317,14 @@ export default function CoachSessionsPage() {
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">Danh sách buổi học</p>
         </div>
-        <Button
-          onClick={() => setCreateDialog(true)}
-          className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
-        >
-          <Plus className="w-4 h-4" /> Thêm buổi
-        </Button>
+        {profile?.role === 'coach' && (
+          <Button
+            onClick={() => setCreateDialog(true)}
+            className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
+          >
+            <Plus className="w-4 h-4" /> Thêm buổi
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -303,7 +392,7 @@ export default function CoachSessionsPage() {
                 onChange={e => setSessionForm(p => ({ ...p, duration_min: e.target.value }))}
               />
             </div>
-            <div>
+             <div>
               <Label>Sân</Label>
               <Select
                 value={sessionForm.court_id || 'none'}
@@ -315,6 +404,23 @@ export default function CoachSessionsPage() {
                 <SelectContent>
                   <SelectItem value="none">Chưa chọn</SelectItem>
                   {courts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Giáo án</Label>
+              <Select
+                value={sessionForm.lesson_plan_id || 'none'}
+                onValueChange={v => setSessionForm(p => ({ ...p, lesson_plan_id: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Chọn giáo án" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Không chọn giáo án</SelectItem>
+                  {lessonPlans.map(lp => (
+                    <SelectItem key={lp.id} value={lp.id}>{lp.title}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -355,8 +461,8 @@ export default function CoachSessionsPage() {
           <DialogHeader>
             <DialogTitle>Cập nhật trạng thái buổi học</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="py-2 space-y-4">
+            <p className="text-sm text-gray-600">
               {statusDialog.session && formatDateTime(statusDialog.session.scheduled_at)}
             </p>
 
@@ -369,8 +475,47 @@ export default function CoachSessionsPage() {
               <span className="font-medium">Đánh dấu Hoàn thành</span>
             </button>
 
+            {/* Link Lesson Plan */}
+            <div className="pt-4 border-t border-gray-100 space-y-2">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Giáo án cho buổi dạy</p>
+              <Select
+                value={editLessonPlanId}
+                onValueChange={setEditLessonPlanId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn giáo án" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Chưa chọn giáo án</SelectItem>
+                  {lessonPlans.map(lp => (
+                    <SelectItem key={lp.id} value={lp.id}>{lp.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  if (!statusDialog.session) return
+                  const { error } = await (supabase.from('sessions') as any)
+                    .update({ lesson_plan_id: editLessonPlanId === 'none' ? null : editLessonPlanId })
+                    .eq('id', statusDialog.session.id)
+                  
+                  if (error) {
+                    toast({ title: 'Lỗi cập nhật giáo án', description: error.message, variant: 'destructive' })
+                  } else {
+                    toast({ title: 'Đã cập nhật giáo án thành công' })
+                    setStatusDialog({ open: false, session: null })
+                    await loadData()
+                  }
+                }}
+              >
+                Lưu giáo án
+              </Button>
+            </div>
+
             {/* Cancel with reason */}
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+            <div className="pt-4 border-t border-gray-100 space-y-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Hủy buổi học</p>
               <Input
                 placeholder="Lý do hủy (vd: Sân sự cố, HLV bận việc...)"

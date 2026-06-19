@@ -31,20 +31,61 @@ export default function CoachClassesPage() {
     if (!profile) return
 
     async function loadClasses() {
-      const { data: coachData, error: coachError } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('user_id', profile!.id)
-        .maybeSingle()
+      let coachIds: string[] = []
 
-      if (coachError) {
-        console.error('Failed to fetch coach record:', coachError.message)
-        toast({ title: 'Lỗi tải dữ liệu', description: coachError.message, variant: 'destructive' })
+      if ((profile!.role as string) === 'assistant') {
+        const { data: assignments, error: assignError } = await (supabase.from('coach_assistants') as any)
+          .select('coach_id')
+          .eq('assistant_id', profile!.id)
+
+        if (assignError) {
+          console.error('Failed to fetch assignments:', assignError.message)
+          toast({ title: 'Lỗi tải phân công', description: assignError.message, variant: 'destructive' })
+          setIsLoading(false)
+          return
+        }
+
+        const leaderProfileIds = (assignments ?? []).map((a: any) => a.coach_id)
+        if (leaderProfileIds.length === 0) {
+          setIsLoading(false)
+          return
+        }
+
+        const { data: leadersCoaches, error: leadersError } = await (supabase.from('coaches') as any)
+          .select('id')
+          .in('user_id', leaderProfileIds)
+
+        if (leadersError) {
+          console.error('Failed to fetch leaders coaches:', leadersError.message)
+          setIsLoading(false)
+          return
+        }
+
+        coachIds = (leadersCoaches ?? []).map((c: any) => c.id)
+      } else {
+        const { data: coachData, error: coachError } = await (supabase.from('coaches') as any)
+          .select('id')
+          .eq('user_id', profile!.id)
+          .maybeSingle()
+
+        if (coachError) {
+          console.error('Failed to fetch coach record:', coachError.message)
+          toast({ title: 'Lỗi tải dữ liệu', description: coachError.message, variant: 'destructive' })
+          setIsLoading(false)
+          return
+        }
+        const coach = coachData as { id: string } | null
+        if (!coach) {
+          setIsLoading(false)
+          return
+        }
+        coachIds = [coach.id]
+      }
+
+      if (coachIds.length === 0) {
         setIsLoading(false)
         return
       }
-      const coach = coachData as { id: string } | null
-      if (!coach) { setIsLoading(false); return }
 
       const { data, error } = await supabase
         .from('classes')
@@ -54,7 +95,7 @@ export default function CoachClassesPage() {
           facilities(id, name),
           class_students(count)
         `)
-        .eq('coach_id', coach.id)
+        .in('coach_id', coachIds)
         .eq('status', 'active')
         .order('name')
 

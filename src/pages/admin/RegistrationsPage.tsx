@@ -315,22 +315,25 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
         .update({
           emergency_contact: emergencyContact,
           notes: healthNotes,
+          date_of_birth: record.date_of_birth,
         })
         .eq('id', studentId)
 
       if (studentUpdateError) console.error('Student profile update error:', studentUpdateError.message)
 
-      // 4. Update profile avatar if portrait exists (stores Base64)
-      if (photoUrl) {
-        const { error: profileUpdateError } = await (supabase
-          .from('profiles') as any)
-          .update({
-            avatar_url: photoUrl
-          })
-          .eq('id', authUserId)
-
-        if (profileUpdateError) console.error('Avatar update error:', profileUpdateError.message)
+      // 4. Update profile gender and avatar if portrait exists
+      const profileUpdates: Record<string, any> = {
+        gender: record.gender,
       }
+      if (photoUrl) {
+        profileUpdates.avatar_url = photoUrl
+      }
+      const { error: profileUpdateError } = await (supabase
+        .from('profiles') as any)
+        .update(profileUpdates)
+        .eq('id', authUserId)
+
+      if (profileUpdateError) console.error('Profile update error:', profileUpdateError.message)
 
       // 5. Enroll student into class (insert class_students)
       const { error: enrollError } = await (supabase

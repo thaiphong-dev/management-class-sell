@@ -52,7 +52,7 @@ const STATUS_CONFIG: Record<PackageHistory['status'], { label: string; className
   depleted:           { label: 'Hết buổi',       className: 'bg-gray-100 text-gray-600' },
 }
 
-export default function StudentPackagesPage() {
+export default function StudentPackagesPage({ studentId }: { studentId?: string } = {}) {
   const { profile } = useAuthContext()
   const { toast } = useToast()
   const [activeCards, setActiveCards] = useState<ActiveCard[]>([])
@@ -82,19 +82,24 @@ export default function StudentPackagesPage() {
     if (!profile) return
     setIsLoading(true)
     try {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', profile.id)
-        .maybeSingle()
+      let resolvedStudentId = studentId
 
-      if (studentError) {
-        console.error('Failed to fetch student record:', studentError.message)
-        setIsLoading(false)
-        return
+      if (!resolvedStudentId) {
+        const { data: studentData, error: studentError } = await (supabase
+          .from('students') as any)
+          .select('id')
+          .eq('user_id', profile.id)
+          .maybeSingle()
+
+        if (studentError) {
+          console.error('Failed to fetch student record:', studentError.message)
+          setIsLoading(false)
+          return
+        }
+        resolvedStudentId = studentData?.id
       }
-      const student = studentData as { id: string } | null
-      if (!student) {
+
+      if (!resolvedStudentId) {
         setIsLoading(false)
         return
       }
@@ -102,10 +107,10 @@ export default function StudentPackagesPage() {
       const [activeRes, historyRes, availableRes, unpaidRes, bankRes, classesRes] = await Promise.all([
         (supabase.from('active_student_packages') as any)
           .select('id, package_name, package_type, sessions_remaining, sessions_total, days_remaining, expires_at, activated_at, alert_level')
-          .eq('student_id', student.id),
+          .eq('student_id', resolvedStudentId),
         (supabase.from('student_packages') as any)
           .select('id, purchased_at, activated_at, expires_at, status, sessions_total, sessions_remaining, packages(name, package_type, coaching_type)')
-          .eq('student_id', student.id)
+          .eq('student_id', resolvedStudentId)
           .order('purchased_at', { ascending: false }),
         (supabase.from('packages') as any)
           .select('id, name, package_type, sessions_count, validity_days, price, description, coaching_type')
@@ -114,7 +119,7 @@ export default function StudentPackagesPage() {
           .order('price'),
         (supabase.from('registrations') as any)
           .select('id, student_package_id, payment_id, classes(id, name), packages(id, name, price)')
-          .eq('student_id', student.id)
+          .eq('student_id', resolvedStudentId)
           .eq('payment_status', 'unpaid')
           .eq('status', 'pending')
           .maybeSingle(),
@@ -215,7 +220,7 @@ export default function StudentPackagesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [profile, toast])
+  }, [profile, toast, studentId])
 
   useEffect(() => {
     loadPageData()
@@ -238,10 +243,12 @@ export default function StudentPackagesPage() {
     if (!selectedPkgForBuy || !selectedClassId) return
     setIsSubmitting(true)
     try {
-      const { error } = await (supabase.rpc as any)('student_buy_package', {
-        p_class_id: selectedClassId,
-        p_package_id: selectedPkgForBuy.id
-      })
+      const rpcName = studentId ? 'parent_buy_package' : 'student_buy_package'
+      const rpcParams = studentId
+        ? { p_student_id: studentId, p_class_id: selectedClassId, p_package_id: selectedPkgForBuy.id }
+        : { p_class_id: selectedClassId, p_package_id: selectedPkgForBuy.id }
+
+      const { error } = await (supabase.rpc as any)(rpcName, rpcParams)
 
       if (error) throw error
 
@@ -252,7 +259,7 @@ export default function StudentPackagesPage() {
       setBuyDialogOpen(false)
       await loadPageData()
     } catch (err: any) {
-      console.error('Error in student_buy_package:', err.message)
+      console.error('Error buying package:', err.message)
       toast({
         title: 'Lỗi đăng ký mua',
         description: err.message || 'Lỗi không xác định',

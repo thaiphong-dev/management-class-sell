@@ -50,7 +50,7 @@ test.describe('Admin – Users Management', () => {
     if (result === 'closed') {
       // Created successfully — check name in HLV tab
       await page.getByRole('tab', { name: /HLV/ }).click()
-      await expect(page.getByText(coachName)).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(coachName, { exact: true })).toBeVisible({ timeout: 5_000 })
     }
     // If dialog stays open (e.g. edge function not deployed), log but don't hard-fail
   })
@@ -75,7 +75,7 @@ test.describe('Admin – Users Management', () => {
 
     if (result === 'closed') {
       await page.getByRole('tab', { name: /Học viên/ }).click()
-      await expect(page.getByText(studentName)).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(studentName, { exact: true })).toBeVisible({ timeout: 5_000 })
     }
   })
 

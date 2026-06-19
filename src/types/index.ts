@@ -25,7 +25,7 @@ export type ClassInsert       = Database['public']['Tables']['classes']['Insert'
 export type ClassUpdate       = Database['public']['Tables']['classes']['Update']
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
-export type UserRole               = 'admin' | 'coach' | 'student'
+export type UserRole               = 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
 export type AttendanceStatus       = 'present' | 'absent' | 'late' | 'excused'
 export type PackageType            = 'session' | 'monthly'
 export type StudentPackageStatus   = 'pending_activation' | 'active' | 'expired' | 'depleted'

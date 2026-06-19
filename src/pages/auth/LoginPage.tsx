@@ -151,8 +151,18 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-white/30 text-xs mt-6">
-          © 2026 Thái Phong Badminton Class. Tài khoản được cấp bởi Admin.
+        <div className="mt-6 text-center text-sm">
+          <span className="text-white/50">Bạn muốn đăng ký tập cho con? </span>
+          <button
+            onClick={() => navigate('/register')}
+            className="text-red-400 hover:text-red-300 font-semibold underline transition-colors"
+          >
+            Đăng ký tài khoản Phụ huynh
+          </button>
+        </div>
+
+        <p className="text-center text-white/30 text-[10px] mt-6">
+          © 2026 Thái Phong Badminton Class.
         </p>
       </div>
     </div>
