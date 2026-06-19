@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, BookOpen, Users, Clock, Pencil, UserPlus, UserMinus } from 'lucide-react'
+import { Plus, BookOpen, Users, Clock, Pencil, UserPlus, UserMinus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,10 @@ export default function ClassesPage() {
   const [enrolledStudents, setEnrolledStudents] = useState<EnrolledStudent[]>([])
   const [allStudents, setAllStudents] = useState<StudentOption[]>([])
   const [enrollLoading, setEnrollLoading] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string; className: string }>({
+    open: false, id: '', className: '',
+  })
+  const [deleting, setDeleting] = useState(false)
 
   async function loadClasses() {
     const { data, error } = await supabase
@@ -168,6 +172,24 @@ export default function ClassesPage() {
       await loadClasses()
     }
     setSaving(false)
+  }
+
+  async function handleDeleteClass() {
+    if (!deleteDialog.id) return
+    setDeleting(true)
+    try {
+      const { error } = await supabase.from('classes').delete().eq('id', deleteDialog.id)
+      if (error) throw error
+
+      toast({ title: 'Đã xóa lớp học thành công' })
+      setDeleteDialog({ open: false, id: '', className: '' })
+      await loadClasses()
+    } catch (err: any) {
+      console.error('Failed to delete class:', err.message)
+      toast({ title: 'Lỗi xóa lớp học', description: err.message, variant: 'destructive' })
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function openEnroll(classId: string, className: string) {
@@ -323,6 +345,13 @@ export default function ClassesPage() {
                   >
                     <Users className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={() => setDeleteDialog({ open: true, id: cls.id, className: cls.name })}
+                    className="p-1.5 text-gray-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Xóa lớp học"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -433,6 +462,35 @@ export default function ClassesPage() {
               className="bg-primary-600 hover:bg-primary-700 text-white"
             >
               {saving ? 'Đang lưu...' : 'Lưu'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={open => !open && setDeleteDialog({ open: false, id: '', className: '' })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-1.5">
+              Xác nhận xóa lớp học
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 text-sm text-gray-500">
+            Bạn có chắc chắn muốn xóa lớp học <strong className="text-gray-900">"{deleteDialog.className}"</strong> không?
+            <p className="mt-2 text-xs text-red-500 font-medium">
+              Cảnh báo: Hành động này sẽ xóa vĩnh viễn lớp học, danh sách học viên trong lớp, các buổi học đã xếp lịch và toàn bộ dữ liệu điểm danh liên quan.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: '', className: '' })} disabled={deleting}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleDeleteClass}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleting}
+            >
+              {deleting ? 'Đang xóa...' : 'Xác nhận xóa'}
             </Button>
           </DialogFooter>
         </DialogContent>

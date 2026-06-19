@@ -1,25 +1,19 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthContext } from '@/contexts/AuthContext'
 import type { UserRole } from '@/types'
+import NotFoundPage from '@/pages/public/NotFoundPage'
 
 interface RequireRoleProps {
   role: UserRole
 }
 
-const ROLE_DASHBOARDS: Record<UserRole, string> = {
-  admin:   '/admin/dashboard',
-  coach:   '/coach/dashboard',
-  student: '/student/dashboard',
-}
-
 export function RequireRole({ role }: RequireRoleProps) {
   const { session, profile, isLoading, profileError, signOut } = useAuthContext()
-  const location = useLocation()
 
   if (isLoading) return <FullPageSpinner />
 
   if (!session) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <NotFoundPage />
   }
 
   // Profile failed to load (network error, RLS block, etc.)
@@ -35,10 +29,16 @@ export function RequireRole({ role }: RequireRoleProps) {
   }
 
   if (profile.role !== role) {
-    return <Navigate to={ROLE_DASHBOARDS[profile.role]} replace />
+    return <NotFoundPage />
   }
 
   return <Outlet />
+}
+
+const ROLE_DASHBOARDS: Record<UserRole, string> = {
+  admin:   '/admin/dashboard',
+  coach:   '/coach/dashboard',
+  student: '/student/dashboard',
 }
 
 export function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -58,7 +58,7 @@ export function RootRedirect() {
 
   if (isLoading) return <FullPageSpinner />
 
-  if (!session) return <Navigate to="/login" replace />
+  if (!session) return <Navigate to="/" replace />
 
   // Session valid but profile broken → show error, not redirect loop
   if (profileError || !profile) return <ProfileErrorScreen onSignOut={signOut} />

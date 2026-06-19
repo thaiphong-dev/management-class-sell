@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Plus, Users, Shield, Dumbbell, GraduationCap, Pencil, Search } from 'lucide-react'
+import { Plus, Users, Shield, Dumbbell, GraduationCap, Pencil, Search, CreditCard } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
@@ -9,13 +10,25 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { formatDate } from '@/lib/utils'
+import { formatDate, cn } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 
 interface UserRow extends Profile {
   email?: string
   coach?: { id: string; specialty: string | null; experience_years: number; status: string } | null
-  student?: { id: string; skill_level: string | null; status: string } | null
+  student?: { 
+    id: string
+    skill_level: string | null
+    status: string 
+    student_packages?: Array<{
+      id: string
+      status: string
+      expires_at: string | null
+      sessions_remaining: number | null
+      sessions_total: number | null
+      packages: { name: string } | null
+    }>
+  } | null
 }
 
 const ROLE_ICONS: Record<UserRole, React.ElementType> = {
@@ -39,6 +52,7 @@ const EMPTY_FORM = {
 export default function UsersPage() {
   const { session } = useAuthContext()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [users, setUsers] = useState<UserRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -55,7 +69,19 @@ export default function UsersPage() {
       .select(`
         *,
         coach:coaches(id, specialty, experience_years, status),
-        student:students(id, skill_level, status)
+        student:students(
+          id, 
+          skill_level, 
+          status,
+          student_packages(
+            id,
+            status,
+            expires_at,
+            sessions_remaining,
+            sessions_total,
+            packages(name)
+          )
+        )
       `)
       .order('created_at', { ascending: false })
 
@@ -177,9 +203,44 @@ export default function UsersPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
-                <p className="text-xs text-gray-400">
-                  {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
-                </p>
+                <div className="flex flex-col gap-0.5 mt-0.5">
+                  <p className="text-xs text-gray-400">
+                    {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
+                  </p>
+                  {user.role === 'student' && (() => {
+                    const activePkg = user.student?.student_packages?.find(
+                      (sp: any) => sp.status === 'active' || sp.status === 'pending_activation'
+                    )
+                    if (!activePkg) {
+                      return <p className="text-[11px] text-gray-400 italic">Chưa có thẻ học</p>
+                    }
+                    const pkgName = activePkg.packages?.name ?? 'Gói học'
+                    const statusLabel = activePkg.status === 'active' ? 'Đang dùng' : 'Chờ kích hoạt'
+                    const sessionsText = activePkg.sessions_remaining !== null 
+                      ? ` · Còn ${activePkg.sessions_remaining}/${activePkg.sessions_total} buổi` 
+                      : ' · Không giới hạn buổi'
+                    const expiryText = activePkg.expires_at 
+                      ? ` · Hạn: ${formatDate(activePkg.expires_at)}` 
+                      : (activePkg.status === 'pending_activation' ? ' · Chưa kích hoạt' : '')
+
+                    return (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded font-medium",
+                          activePkg.status === 'active' ? "bg-green-50 text-green-600 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"
+                        )}>
+                          {statusLabel}
+                        </span>
+                        <span className="text-[11px] font-semibold text-gray-700">
+                          {pkgName}
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          {sessionsText}{expiryText}
+                        </span>
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {user.role === 'student' && user.student?.skill_level && (
@@ -200,6 +261,16 @@ export default function UsersPage() {
                   <RoleIcon className="w-3 h-3" />
                   {ROLE_LABELS[user.role]}
                 </span>
+                {user.role === 'student' && user.student?.id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
+                    className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
+                  </Button>
+                )}
                 <button
                   onClick={() => openEdit(user)}
                   className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"

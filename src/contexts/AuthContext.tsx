@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react'
 import type { Session, AuthError } from '@supabase/supabase-js'
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [profileError, setProfileError] = useState(false)
+  const lastFetchedUserId = useRef<string | null>(null)
 
   const fetchProfile = useCallback(async (userId: string) => {
     setProfileError(false)
@@ -47,28 +49,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      if (s) {
-        fetchProfile(s.user.id)
-      } else {
-        setIsLoading(false)
-      }
-    })
+    let active = true
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!active) return
       setSession(s)
       if (s) {
-        setIsLoading(true)
-        fetchProfile(s.user.id)
+        if (lastFetchedUserId.current !== s.user.id) {
+          lastFetchedUserId.current = s.user.id
+          setIsLoading(true)
+          fetchProfile(s.user.id)
+        }
       } else {
+        lastFetchedUserId.current = null
         setProfile(null)
         setProfileError(false)
         setIsLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   async function signIn(email: string, password: string) {

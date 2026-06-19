@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, CreditCard, Users, Zap, ToggleLeft, ToggleRight, Search, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -77,6 +78,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 export default function PackagesPage() {
   const { profile } = useAuthContext()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [packages, setPackages] = useState<Package[]>([])
   const [studentPkgs, setStudentPkgs] = useState<StudentPackageRow[]>([])
   const [students, setStudents] = useState<StudentOption[]>([])
@@ -84,6 +86,7 @@ export default function PackagesPage() {
   const [saving, setSaving] = useState(false)
   const [spFilter, setSpFilter] = useState<string>('all')
   const [spSearch, setSpSearch] = useState('')
+  const [activeTab, setActiveTab] = useState('packages')
  
   const [pkgDialog, setPkgDialog] = useState<{ open: boolean; id?: string; form: PkgForm }>({
     open: false, form: { ...EMPTY_PKG },
@@ -91,6 +94,27 @@ export default function PackagesPage() {
   const [assignDialog, setAssignDialog] = useState(false)
   const [assignForm, setAssignForm] = useState<AssignForm>({ ...EMPTY_ASSIGN })
   const [deleteConfirmPkgId, setDeleteConfirmPkgId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const studentId = searchParams.get('assign_student_id')
+    if (studentId || tab === 'cards') {
+      setActiveTab('cards')
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const studentId = searchParams.get('assign_student_id')
+    if (studentId && students.length > 0) {
+      setAssignForm(prev => ({ ...prev, student_id: studentId }))
+      setAssignDialog(true)
+      
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('assign_student_id')
+      newParams.delete('tab')
+      setSearchParams(newParams, { replace: true })
+    }
+  }, [searchParams, students, setSearchParams])
  
   // ── load ────────────────────────────────────────────────────────────────────
  
@@ -299,6 +323,21 @@ export default function PackagesPage() {
         variant: 'destructive',
       })
     } else {
+      // Expire any existing active or pending packages for this student (excluding the newly created one)
+      const { error: expireError } = await supabase
+        .from('student_packages')
+        .update({
+          status: 'expired',
+          notes: 'Hủy thẻ cũ do cấp thẻ mới.'
+        } as never)
+        .eq('student_id', f.student_id)
+        .in('status', ['active', 'pending_activation'])
+        .neq('id', spId)
+
+      if (expireError) {
+        console.error('Failed to expire old packages:', expireError.message)
+      }
+
       toast({ title: 'Đã cấp thẻ và ghi nhận thanh toán' })
       setAssignDialog(false)
       setAssignForm({ ...EMPTY_ASSIGN })
@@ -389,7 +428,7 @@ export default function PackagesPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="packages">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="packages">Gói học ({packages.length})</TabsTrigger>
           <TabsTrigger value="cards">Thẻ học viên ({studentPkgs.length})</TabsTrigger>

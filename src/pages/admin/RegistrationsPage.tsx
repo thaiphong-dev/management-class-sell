@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
@@ -11,7 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import {
-  Loader2, Check, X, ShieldAlert, Heart, Phone, Mail, User, FileText
+  Loader2, Check, X, ShieldAlert, Heart, Phone, Mail, User, FileText, CreditCard
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
@@ -80,6 +81,7 @@ interface RegistrationRow {
 export default function AdminRegistrationsPage() {
   const { session } = useAuthContext()
   const { toast } = useToast()
+  const navigate = useNavigate()
   
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -422,6 +424,16 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                         >
                           Xem chi tiết
                         </Button>
+                        {r.status === 'approved' && r.student_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${r.student_id}`)}
+                            className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all inline-flex"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
+                          </Button>
+                        )}
                         {r.status === 'pending' && (
                           <>
                             <Button

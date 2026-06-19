@@ -24,7 +24,20 @@ Deno.serve(async (req) => {
 
   try {
     // 1. Verify API Key/Token from Sepay if configured
-    const apiKey = req.headers.get('x-api-key') || req.headers.get('apikey')
+    let apiKey = req.headers.get('x-api-key') || req.headers.get('apikey')
+
+    // Extract from Authorization header if present (Sepay sends "Apikey YOUR_KEY" or "Bearer YOUR_KEY")
+    const authHeader = req.headers.get('authorization')
+    if (!apiKey && authHeader) {
+      if (authHeader.startsWith('Apikey ')) {
+        apiKey = authHeader.substring(7).trim()
+      } else if (authHeader.startsWith('Bearer ')) {
+        apiKey = authHeader.substring(7).trim()
+      } else {
+        apiKey = authHeader.trim()
+      }
+    }
+
     const expectedApiKey = Deno.env.get('SEPAY_WEBHOOK_KEY')
     if (expectedApiKey && apiKey !== expectedApiKey) {
       console.warn('Unauthorized webhook request key:', apiKey)

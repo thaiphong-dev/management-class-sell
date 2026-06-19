@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDate, formatDateTime } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface StudentDetail {
   id: string
@@ -338,18 +339,21 @@ export default function CoachScanAttendancePage() {
                       Không tìm thấy buổi học nào hoạt động trong thời gian này. HLV cần tạo buổi học trước.
                     </div>
                   ) : (
-                    <select
+                    <Select
                       value={selectedSessionId}
-                      onChange={(e) => setSelectedSessionId(e.target.value)}
-                      required
-                      className="w-full px-3.5 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 text-xs font-semibold"
+                      onValueChange={(val) => setSelectedSessionId(val)}
                     >
-                      {sessions.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.className} - {formatDateTime(s.scheduledAt)} {s.facilityName ? `(${s.facilityName})` : ''} - HLV: {s.coachName}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold h-11 focus:ring-2 focus:ring-red-500/50">
+                        <SelectValue placeholder="Chọn buổi học tập luyện" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sessions.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.className} - {formatDateTime(s.scheduledAt)} {s.facilityName ? `(${s.facilityName})` : ''} - HLV: {s.coachName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                   <p className="text-[10px] text-gray-400">Học sinh xin học bù có thể thoải mái chọn buổi học của lớp khác hôm nay hoặc các ngày lân cận.</p>
                 </div>

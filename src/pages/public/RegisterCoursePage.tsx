@@ -7,6 +7,8 @@ import {
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface ClassDetail {
   id: string
@@ -519,36 +521,40 @@ export default function RegisterCoursePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn Lớp Tập Luyện <span className="text-red-500">*</span></label>
-                  <select
+                  <Select
                     value={selectedClassId}
-                    onChange={(e) => handleClassChange(e.target.value)}
-                    required
-                    className="mt-1 w-full px-4 py-3 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
+                    onValueChange={(val) => handleClassChange(val)}
                   >
-                    <option value="">-- Chọn lớp học --</option>
-                    {classes.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.facility_name ? `(${c.facility_name})` : ''} - Trình độ: {c.skill_level === 'beginner' ? 'Cơ bản' : c.skill_level === 'intermediate' ? 'Trung cấp' : c.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1 w-full bg-white border border-gray-200 rounded-xl text-sm font-semibold h-11 focus:ring-2 focus:ring-red-500/50">
+                      <SelectValue placeholder="-- Chọn lớp học --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} {c.facility_name ? `(${c.facility_name})` : ''} - Trình độ: {c.skill_level === 'beginner' ? 'Cơ bản' : c.skill_level === 'intermediate' ? 'Trung cấp' : c.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Chọn Gói Học Muốn Mua <span className="text-red-500">*</span></label>
-                  <select
+                  <Select
                     value={selectedPackageId}
-                    onChange={(e) => handlePackageChange(e.target.value)}
-                    required
-                    className="mt-1 w-full px-4 py-3 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
+                    onValueChange={(val) => handlePackageChange(val)}
                   >
-                    <option value="">-- Chọn gói học --</option>
-                    {packages.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - {Number(p.price).toLocaleString('vi-VN')} VNĐ ({p.package_type === 'session' ? `${p.sessions_count} buổi` : 'Theo tháng'})
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1 w-full bg-white border border-gray-200 rounded-xl text-sm font-semibold h-11 focus:ring-2 focus:ring-red-500/50">
+                      <SelectValue placeholder="-- Chọn gói học --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {packages.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} - {Number(p.price).toLocaleString('vi-VN')} VNĐ ({p.package_type === 'session' ? `${p.sessions_count} buổi` : 'Theo tháng'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -693,13 +699,13 @@ export default function RegisterCoursePage() {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Ngày sinh <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={dateOfBirth}
-                    onChange={(e) => setDateOfBirth(e.target.value)}
-                    required
-                    className="mt-1 w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all text-sm font-semibold"
-                  />
+                  <div className="mt-1">
+                    <DatePicker
+                      value={dateOfBirth}
+                      onChange={(val) => setDateOfBirth(val)}
+                      placeholder="Chọn ngày sinh"
+                    />
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Địa chỉ nhà</label>

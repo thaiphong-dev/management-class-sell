@@ -30,6 +30,7 @@ import StudentPackagesPage   from '@/pages/student/PackagesPage'
 import LandingPage from '@/pages/public/LandingPage'
 import AdminSettingsPage from '@/pages/admin/SettingsPage'
 import RegisterCoursePage from '@/pages/public/RegisterCoursePage'
+import NotFoundPage from '@/pages/public/NotFoundPage'
 
 function DefaultRoute() {
   const { session, profile, isLoading } = useAuthContext()
@@ -51,7 +52,7 @@ function DefaultRoute() {
       coach:   '/coach/dashboard',
       student: '/student/dashboard',
     }
-    return <Navigate to={ROLE_DASHBOARDS[profile.role] || '/login'} replace />
+    return <Navigate to={ROLE_DASHBOARDS[profile.role] || '/'} replace />
   }
 
   return <LandingPage />
@@ -121,7 +122,7 @@ export default function App() {
 
           {/* Root redirect */}
           <Route path="/" element={<DefaultRoute />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <Toaster />
       </AuthProvider>

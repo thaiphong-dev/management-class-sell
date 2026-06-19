@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { formatDateTime } from '@/lib/utils'
 import type { Session, Court, Class } from '@/types'
 
@@ -273,12 +274,13 @@ export default function CoachSessionsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Ngày *</Label>
-                <Input
-                  className="mt-1"
-                  type="date"
-                  value={sessionForm.scheduled_date}
-                  onChange={e => setSessionForm(p => ({ ...p, scheduled_date: e.target.value }))}
-                />
+                <div className="mt-1">
+                  <DatePicker
+                    value={sessionForm.scheduled_date}
+                    onChange={val => setSessionForm(p => ({ ...p, scheduled_date: val }))}
+                    placeholder="Chọn ngày học"
+                  />
+                </div>
               </div>
               <div>
                 <Label>Giờ *</Label>

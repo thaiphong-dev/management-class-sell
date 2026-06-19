@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuthContext } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+
 const loginSchema = z.object({
   email:    z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
@@ -30,7 +32,27 @@ export default function LoginPage() {
       return
     }
 
-    // Profile will be fetched by AuthContext; RequireRole / RootRedirect handles navigation
+    // Fetch the session and role directly to navigate to the specific dashboard route instantly
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const { data: profile } = await (supabase
+        .from('profiles') as any)
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (profile) {
+        const ROLE_DASHBOARDS: Record<string, string> = {
+          admin:   '/admin/dashboard',
+          coach:   '/coach/dashboard',
+          student: '/student/dashboard',
+        }
+        const redirectPath = ROLE_DASHBOARDS[profile.role] || '/'
+        navigate(redirectPath, { replace: true })
+        return
+      }
+    }
+
     navigate('/', { replace: true })
   }
 
