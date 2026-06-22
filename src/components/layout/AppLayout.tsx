@@ -4,11 +4,14 @@ import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { MobileBottomBar } from './MobileBottomBar'
 import { useAuthContext } from '@/contexts/AuthContext'
+import { ProfileDialog } from './ProfileDialog'
+import { useAppStore } from '@/stores/useAppStore'
 
 export function AppLayout() {
   const location = useLocation()
   const mainRef = useRef<HTMLElement>(null)
   const { profile } = useAuthContext()
+  const { profileDialogOpen, setProfileDialogOpen } = useAppStore()
 
   // Reset scroll position on route change (fixes mobile sidebar nav UX)
   useEffect(() => {
@@ -38,6 +41,7 @@ export function AppLayout() {
         </main>
         <MobileBottomBar />
       </div>
+      <ProfileDialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen} />
     </div>
   )
 }

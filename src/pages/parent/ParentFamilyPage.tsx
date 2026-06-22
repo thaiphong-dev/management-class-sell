@@ -6,7 +6,7 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { 
   UserPlus, QrCode, Info, 
-  Trash2, Heart, Loader2,
+  Trash2, Plus, Heart, Loader2,
   Calendar, ClipboardList, TrendingUp, CreditCard,
   ShieldAlert, CheckCircle2, GraduationCap, Check,
   Download
@@ -25,6 +25,7 @@ interface ChildProfile {
   emergencyContact: string | null;
   notes: string | null;
   status: string;
+  avatarUrl: string | null;
 }
 
 interface ClassInfo {
@@ -42,7 +43,8 @@ interface PackageInfo {
   package_type: 'session' | 'monthly'
 }
 
-const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+
+const compressImageToBlob = (file: File, maxWidth = 400, maxHeight = 400, quality = 0.8): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
@@ -70,14 +72,19 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.
         canvas.height = height
 
         const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Không thể tạo canvas context'))
-          return
-        }
+        ctx?.drawImage(img, 0, 0, width, height)
 
-        ctx.drawImage(img, 0, 0, width, height)
-        const dataUrl = canvas.toDataURL('image/jpeg', quality)
-        resolve(dataUrl)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Không thể nén ảnh'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
       }
       img.onerror = (err) => reject(err)
     }
@@ -119,6 +126,7 @@ export default function ParentFamilyPage() {
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [selectedChildForQr, setSelectedChildForQr] = useState<ChildProfile | null>(null)
   
+  const [addChildOpen, setAddChildOpen] = useState(false)
   const [registerClassOpen, setRegisterClassOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [paymentQrLoading, setPaymentQrLoading] = useState(true)
@@ -210,13 +218,14 @@ export default function ParentFamilyPage() {
         emergencyContact: c.emergency_contact,
         notes: c.notes,
         status: c.status,
+        avatarUrl: c.profiles?.avatar_url || null,
       }))
       setChildren(formattedChildren)
 
-      if (formattedChildren.length > 0) {
-        setSelectedChildId(prev => prev || formattedChildren[0].id)
-      } else {
+      if (formattedChildren.length === 0) {
         setSelectedChildId('new')
+      } else {
+        setSelectedChildId('')
       }
 
       // 3. Get Classes
@@ -306,6 +315,71 @@ export default function ParentFamilyPage() {
     }
   }, [createdRegistrationId, toast])
 
+  const handleAddChild = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newChildName.trim()) {
+      toast({ title: 'Vui lòng nhập tên của con', variant: 'destructive' })
+      return
+    }
+    if (!newChildDob) {
+      toast({ title: 'Vui lòng chọn ngày sinh', variant: 'destructive' })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const childProfileId = crypto.randomUUID()
+
+      // 1. Insert child profile
+      const { error: profileError } = await (supabase
+        .from('profiles') as any)
+        .insert({
+          id: childProfileId,
+          full_name: newChildName.trim(),
+          role: 'student',
+          gender: newChildGender,
+        })
+
+      if (profileError) throw profileError
+
+      // 2. Insert child student record linked to parent
+      const emergencyContact = `Phụ huynh: ${profile?.full_name} - SĐT: ${profile?.phone || 'N/A'}`
+      const { data: newStudent, error: studentError } = await (supabase
+        .from('students') as any)
+        .insert({
+          user_id: childProfileId,
+          skill_level: 'beginner',
+          date_of_birth: newChildDob,
+          emergency_contact: emergencyContact,
+          notes: newChildNotes.trim() || 'Học viên con được phụ huynh tạo.',
+          parent_id: parentRecord.id,
+          status: 'active',
+        })
+        .select('id')
+        .single()
+
+      if (studentError) throw studentError
+
+      if (newStudent) {
+        setActiveChildId(newStudent.id)
+      }
+
+      toast({ title: 'Thêm con thành công!' })
+      setAddChildOpen(false)
+      // Reset form
+      setNewChildName('')
+      setNewChildGender('Nam')
+      setNewChildDob('')
+      setNewChildNotes('')
+      await loadData()
+    } catch (err: any) {
+      console.error(err)
+      toast({ title: 'Lỗi thêm con', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
@@ -393,10 +467,18 @@ export default function ParentFamilyPage() {
         finalChildDob = child.dateOfBirth || new Date().toISOString().split('T')[0]
       }
 
-      // 2. Compress photo if selected
-      let photoBase64 = null
+      // 2. Upload photo if selected
+      let photoUrl = null
       if (photoFile) {
-        photoBase64 = await compressImage(photoFile)
+        const blob = await compressImageToBlob(photoFile)
+        const fileExt = 'jpg'
+        const fileName = `avatars/${finalProfileId}-${Date.now()}.${fileExt}`
+        const { error: uploadErr } = await supabase.storage
+          .from('image')
+          .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true })
+        if (uploadErr) throw uploadErr
+        const { data: urlData } = supabase.storage.from('image').getPublicUrl(fileName)
+        photoUrl = urlData.publicUrl
       }
 
       // 3. Get Class & Package Details
@@ -406,10 +488,10 @@ export default function ParentFamilyPage() {
       if (!selectedClass || !selectedPackage) throw new Error('Thông tin lớp hoặc gói học không hợp lệ')
 
       // Update child avatar if they uploaded a photo
-      if (photoBase64) {
+      if (photoUrl) {
         await (supabase
           .from('profiles') as any)
-          .update({ avatar_url: photoBase64 })
+          .update({ avatar_url: photoUrl })
           .eq('id', finalProfileId)
       }
 
@@ -490,7 +572,7 @@ export default function ParentFamilyPage() {
           q9_other_reasons_detail: q9Detail || null,
           q10_disability: q10,
           q10_disability_detail: q10Detail || null,
-          student_photo_url: photoBase64,
+          student_photo_url: photoUrl,
           parent_name: profile?.full_name,
           parent_mobile_phone: profile?.phone,
           parent_email: session?.user?.email,
@@ -612,6 +694,12 @@ export default function ParentFamilyPage() {
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Button
+            onClick={() => setAddChildOpen(true)}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl px-4 py-2 text-xs font-bold border border-gray-200/50 shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-1 text-gray-600" /> Thêm con mới
+          </Button>
+          <Button
             onClick={() => setRegisterClassOpen(true)}
             className="bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2 text-xs font-bold shadow-sm"
           >
@@ -632,9 +720,17 @@ export default function ParentFamilyPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white text-sm font-bold">
-                      {c.fullName.charAt(0).toUpperCase()}
-                    </div>
+                    {c.avatarUrl ? (
+                      <img
+                        src={c.avatarUrl}
+                        alt={c.fullName}
+                        className="w-10 h-10 rounded-full object-cover border border-gray-150 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                        {c.fullName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-bold text-gray-850 text-sm leading-normal">{c.fullName}</h3>
                       <p className="text-[11px] text-gray-400 mt-0.5">Giới tính: {c.gender} | Ngày sinh: {c.dateOfBirth ? new Date(c.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}</p>
@@ -768,6 +864,92 @@ export default function ParentFamilyPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Child Dialog */}
+      <Dialog open={addChildOpen} onOpenChange={setAddChildOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-gray-200">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-850 select-none">Thêm Hồ Sơ Con Mới</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Tạo hồ sơ con của bạn dưới 15 tuổi. Các con không cần email/mật khẩu đăng nhập riêng.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddChild} className="space-y-4 py-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Họ và tên của con</label>
+              <input
+                type="text"
+                placeholder="Nguyễn Văn B"
+                value={newChildName}
+                onChange={e => setNewChildName(e.target.value)}
+                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 focus:border-red-500/30 transition-all"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Giới tính</label>
+                <Select
+                  value={newChildGender}
+                  onValueChange={(val: 'Nam' | 'Nữ') => setNewChildGender(val)}
+                >
+                  <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-200 text-xs">
+                    <SelectItem value="Nam">Nam</SelectItem>
+                    <SelectItem value="Nữ">Nữ</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Ngày sinh của con</label>
+                <input
+                  type="date"
+                  value={newChildDob}
+                  onChange={e => setNewChildDob(e.target.value)}
+                  className="w-full px-3.5 py-2 h-9 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Ghi chú thể trạng / Bệnh lý (nếu có)</label>
+              <textarea
+                rows={2}
+                placeholder="Bé bị cận thị, hen suyễn nhẹ..."
+                value={newChildNotes}
+                onChange={e => setNewChildNotes(e.target.value)}
+                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 resize-none"
+              />
+            </div>
+
+            <DialogFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setAddChildOpen(false)}
+                className="rounded-xl text-xs py-2 text-gray-500 font-semibold"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs py-2 px-4 font-bold flex items-center justify-center gap-1 transition-colors"
+              >
+                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Xác nhận thêm con
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Register Course Dialog */}
       <Dialog open={registerClassOpen} onOpenChange={setRegisterClassOpen}>
         <DialogContent className="max-w-2xl w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-gray-200 p-4 sm:p-6">

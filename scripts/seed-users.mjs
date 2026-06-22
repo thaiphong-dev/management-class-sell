@@ -132,6 +132,14 @@ const TEST_USERS = [
     phone:    '0945678901',
     studentData: { skill_level: 'intermediate' },
   },
+  {
+    email:    'quanghuy.tma@shuttleclass.vn',
+    password: 'Student@123',
+    fullName: 'Lê Quang Huy',
+    role:     'student',
+    phone:    '0866551124',
+    studentData: { skill_level: 'beginner' },
+  },
 ]
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -156,18 +164,30 @@ async function main() {
     process.stdout.write(`   ⏳ ${user.email} (${user.role}) ... `)
 
     try {
+      let userId;
       const result = await createUser(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user)
 
       if (result.skipped) {
-        console.log('⏭  đã tồn tại')
-        continue
+        // Find the user ID from auth.users using SQL
+        const dbResult = await runSQL(SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN, 
+          `select id from auth.users where email = '${user.email}'`
+        )
+        if (dbResult && dbResult.length > 0 && dbResult[0].id) {
+          userId = dbResult[0].id
+          console.log(`\n      ⏭  đã tồn tại (ID: ${userId})`)
+        } else {
+          throw new Error(`User already registered in auth but not found in auth.users table`)
+        }
+      } else {
+        userId = result.id
+        console.log('✅')
       }
 
-      const userId = result.id
-
-      // Update phone in profiles
+      // Update phone, full_name, role in profiles
       await runSQL(SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN,
-        `update profiles set phone = '${user.phone}' where id = '${userId}'`
+        `insert into profiles (id, full_name, phone, role) 
+         values ('${userId}', '${user.fullName}', '${user.phone}', '${user.role}') 
+         on conflict (id) do update set phone = '${user.phone}', full_name = '${user.fullName}', role = '${user.role}'`
       )
 
       // Create coach or student record
@@ -176,8 +196,16 @@ async function main() {
         await runSQL(SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN, `
           insert into coaches (user_id, specialty, experience_years, bio)
           values ('${userId}', '${specialty}', ${experience_years}, '${bio}')
-          on conflict (user_id) do nothing
+          on conflict (user_id) do update set specialty = '${specialty}', experience_years = ${experience_years}, bio = '${bio}'
         `)
+
+        if (user.email === 'tuthaiphong600@gmail.com') {
+          await runSQL(SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN, `
+            update classes 
+            set coach_id = (select id from coaches where user_id = '${userId}')
+            where id = '40000000-0000-0000-0000-000000000001'
+          `)
+        }
       }
 
       if (user.studentData) {
@@ -185,11 +213,9 @@ async function main() {
         await runSQL(SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN, `
           insert into students (user_id, skill_level)
           values ('${userId}', '${skill_level}')
-          on conflict (user_id) do nothing
+          on conflict (user_id) do update set skill_level = '${skill_level}'
         `)
       }
-
-      console.log('✅')
     } catch (err) {
       console.log('❌')
       console.error(`      ${err.message}`)

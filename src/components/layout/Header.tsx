@@ -189,7 +189,7 @@ function ChildSwitcher({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile'
 
 export function Header() {
   const { profile } = useAuthContext()
-  const { toggleSidebar } = useAppStore()
+  const { toggleSidebar, setProfileDialogOpen } = useAppStore()
   const location = useLocation()
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
@@ -329,14 +329,27 @@ export function Header() {
 
         {/* User avatar */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
-            <span className="text-white text-xs font-semibold">
-              {profile?.full_name.charAt(0).toUpperCase() ?? '?'}
-            </span>
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-900 leading-tight">{profile?.full_name}</p>
-          </div>
+          <button
+            onClick={() => setProfileDialogOpen(true)}
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer border-0 bg-transparent p-0 text-left"
+          >
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt="Avatar"
+                className="w-8 h-8 rounded-full object-cover border border-gray-100 shadow-sm"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
+                <span className="text-white text-xs font-semibold">
+                  {profile?.full_name.charAt(0).toUpperCase() ?? '?'}
+                </span>
+              </div>
+            )}
+            <div className="hidden sm:block">
+              <p className="text-sm font-medium text-gray-900 leading-tight">{profile?.full_name}</p>
+            </div>
+          </button>
         </div>
       </header>
 

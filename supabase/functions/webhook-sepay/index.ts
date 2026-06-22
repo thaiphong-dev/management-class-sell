@@ -254,23 +254,41 @@ Deno.serve(async (req) => {
       ? 'beginner'
       : (classInfo?.skill_level || 'beginner')
 
-    let authUserId: string
+    let authUserId = ''
 
     // Check if auth user exists
-    const { data: userListData, error: userListError } = await supabaseAdmin.auth.admin.listUsers({
-      filter: {
-        email: email
+    let page = 1
+    let hasMore = true
+    while (hasMore) {
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 100
+      })
+      
+      if (listError) {
+        throw new Error(`Failed to list users: ${listError.message}`)
       }
-    })
-    
-    if (userListError) {
-      throw new Error(`Failed to list users: ${userListError.message}`)
+      
+      const users = listData?.users || []
+      if (users.length === 0) {
+        break
+      }
+      
+      const foundUser = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase())
+      if (foundUser) {
+        authUserId = foundUser.id
+        break
+      }
+      
+      if (users.length < 100) {
+        hasMore = false
+      } else {
+        page++
+      }
     }
 
-    const existingUser = userListData?.users?.[0]
-    if (existingUser) {
-      console.log('User auth already exists, reusing account:', existingUser.id)
-      authUserId = existingUser.id
+    if (authUserId) {
+      console.log('User auth already exists, reusing account:', authUserId)
     } else {
       // Create user
       const password = phone || 'Student@123'

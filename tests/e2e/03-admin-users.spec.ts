@@ -7,7 +7,8 @@ import { loginAs, uniqueName } from '../helpers/auth'
 
 test.beforeEach(async ({ page }) => {
   await loginAs(page, 'admin')
-  await page.getByRole('link', { name: 'Người dùng' }).click()
+  await page.goto('/admin/users')
+  await page.waitForLoadState('networkidle')
   await expect(page).toHaveURL(/\/admin\/users/)
   // Wait for users list to render (uses .pl-9 search input as ready signal)
   await expect(page.locator('input.pl-9')).toBeVisible({ timeout: 10_000 })
@@ -57,11 +58,9 @@ test.describe('Admin – Users Management', () => {
       await coachRow.first().getByRole('button').last().click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
-      page.once('dialog', async dialog => {
-        await dialog.accept()
-      })
       await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await page.getByRole('dialog').filter({ hasText: 'XÓA VĨNH VIỄN tài khoản' }).getByRole('button', { name: 'Xóa tài khoản' }).click()
+      await expect(page.getByRole('dialog').filter({ hasText: 'Chỉnh sửa thông tin' })).not.toBeVisible({ timeout: 10_000 })
     }
     // If dialog stays open (e.g. edge function not deployed), log but don't hard-fail
   })
@@ -93,11 +92,9 @@ test.describe('Admin – Users Management', () => {
       await studentRow.first().getByRole('button').last().click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
-      page.once('dialog', async dialog => {
-        await dialog.accept()
-      })
       await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await page.getByRole('dialog').filter({ hasText: 'XÓA VĨNH VIỄN tài khoản' }).getByRole('button', { name: 'Xóa tài khoản' }).click()
+      await expect(page.getByRole('dialog').filter({ hasText: 'Chỉnh sửa thông tin' })).not.toBeVisible({ timeout: 10_000 })
     }
   })
 
@@ -238,14 +235,10 @@ test.describe('Admin – Users Management', () => {
     await expect(page.getByRole('dialog')).toBeVisible()
 
     // 2. Disable user
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain('muốn khóa tài khoản')
-      await dialog.accept()
-    })
-    
     // Click "Vô hiệu hóa" button
     await page.getByRole('button', { name: 'Vô hiệu hóa' }).click()
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+    await page.getByRole('dialog').filter({ hasText: 'Khóa tài khoản' }).getByRole('button', { name: 'Khóa tài khoản' }).click()
+    await expect(page.getByRole('dialog').filter({ hasText: 'Chỉnh sửa thông tin' })).not.toBeVisible({ timeout: 10_000 })
 
     // Verify "Đã khóa" badge is displayed
     await expect(studentRow.first().getByText('Đã khóa').first()).toBeVisible({ timeout: 5_000 })
@@ -255,14 +248,10 @@ test.describe('Admin – Users Management', () => {
     await studentRow.first().getByRole('button').last().click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain('muốn mở khóa tài khoản')
-      await dialog.accept()
-    })
-
     // Click "Kích hoạt" button
     await page.getByRole('button', { name: 'Kích hoạt' }).click()
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+    await page.getByRole('dialog').filter({ hasText: 'Mở khóa tài khoản' }).getByRole('button', { name: 'Mở khóa' }).click()
+    await expect(page.getByRole('dialog').filter({ hasText: 'Chỉnh sửa thông tin' })).not.toBeVisible({ timeout: 10_000 })
 
     // Verify "Đã khóa" badge is gone
     await expect(studentRow.first().getByText('Đã khóa').first()).not.toBeVisible({ timeout: 5_000 })
@@ -272,16 +261,12 @@ test.describe('Admin – Users Management', () => {
     await studentRow.first().getByRole('button').last().click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain('XÓA VĨNH VIỄN tài khoản')
-      await dialog.accept()
-    })
-
     // Click "Xóa tài khoản" button
     await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+    await page.getByRole('dialog').filter({ hasText: 'XÓA VĨNH VIỄN tài khoản' }).getByRole('button', { name: 'Xóa tài khoản' }).click()
+    await expect(page.getByRole('dialog').filter({ hasText: 'Chỉnh sửa thông tin' })).not.toBeVisible({ timeout: 10_000 })
 
     // Verify user is gone
-    await expect(page.getByText(studentName, { exact: true })).not.toBeVisible({ timeout: 5_000 })
+    await expect(studentRow).not.toBeVisible({ timeout: 5_000 })
   })
 })

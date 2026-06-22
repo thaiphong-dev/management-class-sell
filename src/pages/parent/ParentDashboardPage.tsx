@@ -231,7 +231,15 @@ export default function ParentDashboardPage() {
                 <div key={cp.childId} className={`bg-white border ${color.borderLeft} rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between`}>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
+                      {child?.avatarUrl ? (
+                        <img
+                          src={child.avatarUrl}
+                          alt={cp.childName}
+                          className="w-6 h-6 rounded-full object-cover border border-gray-150 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className={`w-2.5 h-2.5 rounded-full ${color.dot} flex-shrink-0`} />
+                      )}
                       <h3 className="font-bold text-gray-850 text-sm select-none">{cp.childName}</h3>
                     </div>
 
@@ -351,8 +359,16 @@ export default function ParentDashboardPage() {
                               {s.children.map(c => {
                                 const color = CHILD_COLORS[c.colorIndex]
                                 return (
-                                  <div key={c.id} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${color.bg} ${color.text} border select-none`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full ${color.dot}`} />
+                                  <div key={c.id} className={`flex items-center gap-1.5 px-2 py-0.5 pl-1.5 rounded-full text-[10px] font-bold ${color.bg} ${color.text} border select-none`}>
+                                    {c.avatarUrl ? (
+                                      <img
+                                        src={c.avatarUrl}
+                                        alt={c.fullName}
+                                        className="w-4 h-4 rounded-full object-cover border border-white/20 flex-shrink-0"
+                                      />
+                                    ) : (
+                                      <div className={`w-1.5 h-1.5 rounded-full ${color.dot} flex-shrink-0`} />
+                                    )}
                                     <span>{c.fullName}</span>
                                   </div>
                                 )

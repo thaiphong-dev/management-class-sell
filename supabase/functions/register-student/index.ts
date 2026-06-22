@@ -47,22 +47,40 @@ Deno.serve(async (req) => {
     const rawFullName = `${last_name} ${first_name}`.trim()
 
     // 1. Create or fetch Auth User
-    let authUserId: string
-    const { data: userListData, error: userListError } = await supabaseAdmin.auth.admin.listUsers({
-      filter: {
-        email: email.trim()
+    let authUserId = ''
+    
+    let page = 1
+    let hasMore = true
+    while (hasMore) {
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 100
+      })
+      
+      if (listError) {
+        throw new Error(`Failed to list users: ${listError.message}`)
       }
-    })
-    
-    if (userListError) {
-      throw new Error(`Failed to list users: ${userListError.message}`)
+      
+      const users = listData?.users || []
+      if (users.length === 0) {
+        break
+      }
+      
+      const foundUser = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase())
+      if (foundUser) {
+        authUserId = foundUser.id
+        break
+      }
+      
+      if (users.length < 100) {
+        hasMore = false
+      } else {
+        page++
+      }
     }
-
-    const existingUser = userListData?.users?.[0]
     
-    if (existingUser) {
-      console.log('User auth already exists, reusing account:', existingUser.id)
-      authUserId = existingUser.id
+    if (authUserId) {
+      console.log('User auth already exists, reusing account:', authUserId)
     } else {
       console.log('Creating new auth user for student...')
       const { data: newUserData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -80,12 +98,58 @@ Deno.serve(async (req) => {
 
     // 2. Upsert profile
     console.log('Upserting user profile...')
+    let avatarUrl = payload.student_photo_url || null
+
+    if (avatarUrl && avatarUrl.startsWith('data:image/')) {
+      console.log('Detected base64 student portrait. Uploading to storage...')
+      try {
+        const match = avatarUrl.match(/^data:(image\/[a-zA-Z0-9+-\.]+);base64,(.+)$/)
+        if (match) {
+          const contentType = match[1]
+          const base64Data = match[2]
+          
+          // Decode base64 to binary data
+          const binaryString = atob(base64Data)
+          const len = binaryString.length
+          const bytes = new Uint8Array(len)
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          
+          const fileExt = contentType.split('/')[1] || 'jpg'
+          const fileName = `registrations/student-${authUserId}-${Date.now()}.${fileExt}`
+          
+          // Upload to Supabase Storage using admin client
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from('image')
+            .upload(fileName, bytes.buffer, {
+              contentType: contentType,
+              upsert: true
+            })
+            
+          if (uploadError) {
+            console.error('Failed to upload base64 portrait to storage:', uploadError.message)
+          } else {
+            // Get public URL
+            const { data: urlData } = supabaseAdmin.storage
+              .from('image')
+              .getPublicUrl(fileName)
+              
+            avatarUrl = urlData.publicUrl
+            console.log('Uploaded successfully! Public URL:', avatarUrl)
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to process base64 portrait:', err.message)
+      }
+    }
+
     const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
       id: authUserId,
       full_name: rawFullName,
       phone: mobile_phone || null,
       role: 'student',
-      avatar_url: payload.student_photo_url || null,
+      avatar_url: avatarUrl,
     })
 
     if (profileError) {
@@ -238,7 +302,7 @@ ${payload.q10_disability ? `- Chi tiết khuyết tật: ${payload.q10_disabilit
         q9_other_reasons_detail: payload.q9_other_reasons_detail,
         q10_disability: payload.q10_disability,
         q10_disability_detail: payload.q10_disability_detail,
-        student_photo_url: payload.student_photo_url,
+        student_photo_url: avatarUrl,
         parent_name: payload.parent_name,
         parent_relationship: payload.parent_relationship,
         parent_address: payload.parent_address,

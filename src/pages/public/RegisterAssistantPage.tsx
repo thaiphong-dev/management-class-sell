@@ -7,7 +7,9 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
-const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+
+
+const compressImageToBlob = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
@@ -35,14 +37,19 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.
         canvas.height = height
 
         const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Không thể tạo canvas context'))
-          return
-        }
+        ctx?.drawImage(img, 0, 0, width, height)
 
-        ctx.drawImage(img, 0, 0, width, height)
-        const dataUrl = canvas.toDataURL('image/jpeg', quality)
-        resolve(dataUrl)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Không thể nén ảnh'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
       }
       img.onerror = (err) => reject(err)
     }
@@ -82,12 +89,20 @@ export default function RegisterAssistantPage() {
 
     setUploadingImage(true)
     try {
-      const base64 = await compressImage(file, 400, 400, 0.8)
-      setAvatarUrl(base64)
-      toast({ title: 'Tải ảnh lên thành công', description: 'Ảnh chân dung đã được đính kèm vào hồ sơ.' })
-    } catch (err) {
+      const blob = await compressImageToBlob(file, 400, 400, 0.8)
+      const fileExt = 'jpg'
+      const fileName = `registrations/assistant-${Date.now()}.${fileExt}`
+      const { error: uploadErr } = await supabase.storage
+        .from('image')
+        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true })
+      if (uploadErr) throw uploadErr
+
+      const { data: urlData } = supabase.storage.from('image').getPublicUrl(fileName)
+      setAvatarUrl(urlData.publicUrl)
+      toast({ title: 'Tải ảnh lên thành công', description: 'Ảnh chân dung đã được tải lên lưu trữ.' })
+    } catch (err: any) {
       console.error(err)
-      toast({ title: 'Lỗi xử lý ảnh', description: 'Không thể nén hoặc tải ảnh lên.', variant: 'destructive' })
+      toast({ title: 'Lỗi xử lý ảnh', description: err.message || 'Không thể nén hoặc tải ảnh lên.', variant: 'destructive' })
     } finally {
       setUploadingImage(false)
     }

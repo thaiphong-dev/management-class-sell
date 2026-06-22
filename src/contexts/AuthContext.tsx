@@ -18,6 +18,7 @@ interface AuthContextValue {
   profileError: boolean
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -47,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(false)
   }, [])
+
+  const refreshProfile = useCallback(async () => {
+    if (session?.user?.id) {
+      await fetchProfile(session.user.id)
+    }
+  }, [session?.user?.id, fetchProfile])
 
   useEffect(() => {
     let active = true
@@ -84,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, isLoading, profileError, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, profile, isLoading, profileError, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

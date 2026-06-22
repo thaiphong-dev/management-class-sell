@@ -87,19 +87,16 @@ on conflict (id) do nothing;
 -- Assigns coach1@shuttleclass.vn to "Lớp Cơ bản A"
 -- =============================================
 insert into classes (id, name, coach_id, facility_id, court_id, skill_level, max_students, status)
-select
+values (
   '40000000-0000-0000-0000-000000000001'::uuid,
   'Lớp Cơ bản A',
-  co.id,
+  (select co.id from coaches co join auth.users u on u.id = co.user_id where u.email in ('tuthaiphong600@gmail.com', 'coach1@shuttleclass.vn') limit 1),
   '10000000-0000-0000-0000-000000000001'::uuid,
   '20000000-0000-0000-0000-000000000001'::uuid,
   'beginner',
   10,
   'active'
-from coaches co
-join auth.users u on u.id = co.user_id
-where u.email = 'coach1@shuttleclass.vn'
-limit 1
+)
 on conflict (id) do nothing;
 
 -- =============================================

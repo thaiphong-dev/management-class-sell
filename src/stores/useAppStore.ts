@@ -6,6 +6,8 @@ interface AppStore {
   setSidebarOpen: (open: boolean) => void
   activeChildId: string | null
   setActiveChildId: (id: string | null) => void
+  profileDialogOpen: boolean
+  setProfileDialogOpen: (open: boolean) => void
 }
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -21,4 +23,6 @@ export const useAppStore = create<AppStore>((set) => ({
     }
     set({ activeChildId: id })
   },
+  profileDialogOpen: false,
+  setProfileDialogOpen: (open) => set({ profileDialogOpen: open }),
 }))

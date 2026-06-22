@@ -73,6 +73,20 @@ export default function UsersPage() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const isAdmin = profile?.role === 'admin'
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void | Promise<void>
+    confirmText?: string
+    cancelText?: string
+    isDestructive?: boolean
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  })
   const [users, setUsers] = useState<UserRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -230,59 +244,75 @@ export default function UsersPage() {
 
   async function toggleUserStatus(user: UserRow) {
     const newStatus = user.status === 'inactive' ? 'active' : 'inactive'
+    const confirmTitle = newStatus === 'inactive' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'
     const confirmMessage = newStatus === 'inactive' 
       ? `Bạn có chắc chắn muốn khóa tài khoản của ${user.full_name}? Người dùng này sẽ không thể đăng nhập.`
       : `Bạn có chắc chắn muốn mở khóa tài khoản của ${user.full_name}?`
       
-    if (!confirm(confirmMessage)) return
-    
-    setSaving(true)
-    try {
-      const { error } = await (supabase as any).rpc('admin_set_user_status', {
-        p_user_id: user.id,
-        p_status: newStatus
-      })
-      if (error) throw error
-      
-      toast({ 
-        title: newStatus === 'inactive' ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản', 
-        description: user.full_name 
-      })
-      
-      if (editDialog.user?.id === user.id) {
-        setEditDialog({ open: false, user: null })
+    setConfirmState({
+      open: true,
+      title: confirmTitle,
+      description: confirmMessage,
+      isDestructive: newStatus === 'inactive',
+      confirmText: newStatus === 'inactive' ? 'Khóa tài khoản' : 'Mở khóa',
+      onConfirm: async () => {
+        setSaving(true)
+        try {
+          const { error } = await (supabase as any).rpc('admin_set_user_status', {
+            p_user_id: user.id,
+            p_status: newStatus
+          })
+          if (error) throw error
+          
+          toast({ 
+            title: newStatus === 'inactive' ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản', 
+            description: user.full_name 
+          })
+          
+          if (editDialog.user?.id === user.id) {
+            setEditDialog({ open: false, user: null })
+          }
+          await loadUsers()
+        } catch (err: any) {
+          toast({ title: 'Lỗi cập nhật trạng thái', description: err.message, variant: 'destructive' })
+        } finally {
+          setSaving(false)
+        }
       }
-      await loadUsers()
-    } catch (err: any) {
-      toast({ title: 'Lỗi cập nhật trạng thái', description: err.message, variant: 'destructive' })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   async function deleteUser(user: UserRow) {
-    if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản của ${user.full_name}?\n\nHành động này sẽ xóa sạch thông tin tài khoản, các gói học, thông tin thanh toán, điểm danh... và KHÔNG thể khôi phục.`)) {
-      return
-    }
+    const confirmTitle = 'XÓA VĨNH VIỄN tài khoản'
+    const confirmMessage = `CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản của ${user.full_name}?\n\nHành động này sẽ xóa sạch thông tin tài khoản, các gói học, thông tin thanh toán, điểm danh... và KHÔNG thể khôi phục.`
     
-    setSaving(true)
-    try {
-      const { error } = await (supabase as any).rpc('admin_delete_user', {
-        p_user_id: user.id
-      })
-      if (error) throw error
-      
-      toast({ title: 'Đã xóa người dùng thành công', description: user.full_name })
-      
-      if (editDialog.user?.id === user.id) {
-        setEditDialog({ open: false, user: null })
+    setConfirmState({
+      open: true,
+      title: confirmTitle,
+      description: confirmMessage,
+      isDestructive: true,
+      confirmText: 'Xóa tài khoản',
+      onConfirm: async () => {
+        setSaving(true)
+        try {
+          const { error } = await (supabase as any).rpc('admin_delete_user', {
+            p_user_id: user.id
+          })
+          if (error) throw error
+          
+          toast({ title: 'Đã xóa người dùng thành công', description: user.full_name })
+          
+          if (editDialog.user?.id === user.id) {
+            setEditDialog({ open: false, user: null })
+          }
+          await loadUsers()
+        } catch (err: any) {
+          toast({ title: 'Lỗi xóa người dùng', description: err.message, variant: 'destructive' })
+        } finally {
+          setSaving(false)
+        }
       }
-      await loadUsers()
-    } catch (err: any) {
-      toast({ title: 'Lỗi xóa người dùng', description: err.message, variant: 'destructive' })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   function openEdit(user: UserRow) {
@@ -900,6 +930,45 @@ export default function UsersPage() {
               className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold"
             >
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmState.open} onOpenChange={(open) => setConfirmState(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-[400px] rounded-3xl p-5 border border-gray-100 shadow-2xl">
+          <DialogHeader className="pb-2 border-b border-gray-100">
+            <DialogTitle className={cn(
+              "text-base font-bold flex items-center gap-2",
+              confirmState.isDestructive ? "text-red-650" : "text-gray-800"
+            )}>
+              {confirmState.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 text-xs text-gray-500 leading-relaxed whitespace-pre-line">
+            {confirmState.description}
+          </div>
+          <DialogFooter className="flex sm:justify-end gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmState(prev => ({ ...prev, open: false }))}
+              className="rounded-xl border-gray-200 text-xs px-4 h-9"
+            >
+              {confirmState.cancelText || 'Hủy'}
+            </Button>
+            <Button
+              onClick={async () => {
+                await confirmState.onConfirm()
+                setConfirmState(prev => ({ ...prev, open: false }))
+              }}
+              className={cn(
+                "rounded-xl text-xs px-4 h-9 text-white font-bold",
+                confirmState.isDestructive 
+                  ? "bg-red-600 hover:bg-red-700" 
+                  : "bg-red-600 hover:bg-red-700"
+              )}
+            >
+              {confirmState.confirmText || 'Xác nhận'}
             </Button>
           </DialogFooter>
         </DialogContent>

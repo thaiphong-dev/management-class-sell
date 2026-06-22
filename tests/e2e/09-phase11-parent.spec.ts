@@ -163,7 +163,7 @@ test.describe('Phase 11 - Parent Portal & Multi-Student Management', () => {
     // Check navigation to Schedule Page
     await page.getByRole('link', { name: 'Lịch học của con' }).click()
     await expect(page).toHaveURL(/\/parent\/schedule/)
-    await expect(page.getByText('Lịch học', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Lịch học', exact: true })).toBeVisible()
 
     // Check navigation to Attendance Page
     await page.getByRole('link', { name: 'Điểm danh của con' }).click()
@@ -173,7 +173,7 @@ test.describe('Phase 11 - Parent Portal & Multi-Student Management', () => {
     // Check navigation to Progress Page
     await page.getByRole('link', { name: 'Tiến độ của con' }).click()
     await expect(page).toHaveURL(/\/parent\/progress/)
-    await expect(page.getByText('Tiến độ', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tiến độ', exact: true })).toBeVisible()
 
     // Clean up: logout
     await logout(page)
