@@ -50,7 +50,18 @@ test.describe('Admin – Users Management', () => {
     if (result === 'closed') {
       // Created successfully — check name in HLV tab
       await page.getByRole('tab', { name: /HLV/ }).click()
-      await expect(page.getByText(coachName, { exact: true })).toBeVisible({ timeout: 5_000 })
+      const coachRow = page.locator('div.mt-1 > div').filter({ hasText: coachName })
+      await expect(coachRow.first()).toBeVisible({ timeout: 5_000 })
+
+      // Cleanup: delete coach
+      await coachRow.first().getByRole('button').last().click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+
+      page.once('dialog', async dialog => {
+        await dialog.accept()
+      })
+      await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
     }
     // If dialog stays open (e.g. edge function not deployed), log but don't hard-fail
   })
@@ -75,13 +86,24 @@ test.describe('Admin – Users Management', () => {
 
     if (result === 'closed') {
       await page.getByRole('tab', { name: /Học viên/ }).click()
-      await expect(page.getByText(studentName, { exact: true })).toBeVisible({ timeout: 5_000 })
+      const studentRow = page.locator('div.mt-1 > div').filter({ hasText: studentName })
+      await expect(studentRow.first()).toBeVisible({ timeout: 5_000 })
+
+      // Cleanup: delete student
+      await studentRow.first().getByRole('button').last().click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+
+      page.once('dialog', async dialog => {
+        await dialog.accept()
+      })
+      await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
     }
   })
 
   test('U7 – Tìm kiếm real-time theo tên', async ({ page }) => {
     const searchInput = page.locator('input.pl-9')
-    const userRows = page.locator('.divide-y > div')
+    const userRows = page.locator('div.mt-1 > div')
 
     // Wait for at least one user row to appear (useEffect fires after first render)
     await userRows.first().waitFor({ state: 'attached', timeout: 8_000 }).catch(() => {})
@@ -111,7 +133,7 @@ test.describe('Admin – Users Management', () => {
   })
 
   test('U8 – Sửa thông tin người dùng (tên)', async ({ page }) => {
-    const userRows = page.locator('.divide-y > div')
+    const userRows = page.locator('div.mt-1 > div')
 
     // Wait for at least one user row to appear (useEffect fires after first render)
     await userRows.first().waitFor({ state: 'attached', timeout: 8_000 }).catch(() => {})
@@ -137,10 +159,10 @@ test.describe('Admin – Users Management', () => {
 
     await page.getByRole('dialog').getByRole('button', { name: 'Lưu' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 8_000 })
-    await expect(page.getByText(newName)).toBeVisible({ timeout: 6_000 })
+    await expect(page.getByText(newName).first()).toBeVisible({ timeout: 6_000 })
 
     // Restore original name
-    await page.locator('.divide-y > div').first().getByRole('button').last().click()
+    await page.locator('div.mt-1 > div').first().getByRole('button').last().click()
     await expect(page.getByRole('dialog')).toBeVisible()
     const nameRestore = page.getByRole('dialog').locator('input').nth(0)
     await nameRestore.clear()
@@ -189,5 +211,77 @@ test.describe('Admin – Users Management', () => {
 
     // Student-specific: Trình độ field with skill_level options
     await expect(page.getByRole('dialog').getByRole('combobox')).toHaveCount(2)
+  })
+
+  test('U9 – Disable, Enable và Delete người dùng', async ({ page }) => {
+    const studentName = uniqueName('HV QC Test Delete')
+    const studentEmail = `e2e.student.del.${Date.now()}@test.shuttleclass.vn`
+
+    // 1. Create a user
+    await page.getByRole('button', { name: 'Thêm người dùng' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByPlaceholder('Nguyễn Văn A').fill(studentName)
+    await page.getByPlaceholder('email@example.com').fill(studentEmail)
+    await page.getByPlaceholder('Tối thiểu 6 ký tự').fill('Student@12345')
+    await page.getByRole('dialog').getByRole('button', { name: 'Tạo tài khoản' }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 20_000 })
+
+    // Go to student tab to find the student
+    await page.getByRole('tab', { name: /Học viên/ }).click()
+    
+    // Find the row of the student
+    const studentRow = page.locator('div.mt-1 > div').filter({ hasText: studentName })
+    await expect(studentRow.first()).toBeVisible({ timeout: 10_000 })
+
+    // Click edit (pencil button) on the student row
+    await studentRow.first().getByRole('button').last().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    // 2. Disable user
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('muốn khóa tài khoản')
+      await dialog.accept()
+    })
+    
+    // Click "Vô hiệu hóa" button
+    await page.getByRole('button', { name: 'Vô hiệu hóa' }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+
+    // Verify "Đã khóa" badge is displayed
+    await expect(studentRow.first().getByText('Đã khóa').first()).toBeVisible({ timeout: 5_000 })
+
+    // 3. Enable user
+    // Click edit (pencil button) again
+    await studentRow.first().getByRole('button').last().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('muốn mở khóa tài khoản')
+      await dialog.accept()
+    })
+
+    // Click "Kích hoạt" button
+    await page.getByRole('button', { name: 'Kích hoạt' }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+
+    // Verify "Đã khóa" badge is gone
+    await expect(studentRow.first().getByText('Đã khóa').first()).not.toBeVisible({ timeout: 5_000 })
+
+    // 4. Delete user
+    // Click edit (pencil button) again
+    await studentRow.first().getByRole('button').last().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('XÓA VĨNH VIỄN tài khoản')
+      await dialog.accept()
+    })
+
+    // Click "Xóa tài khoản" button
+    await page.getByRole('button', { name: 'Xóa tài khoản' }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+
+    // Verify user is gone
+    await expect(page.getByText(studentName, { exact: true })).not.toBeVisible({ timeout: 5_000 })
   })
 })

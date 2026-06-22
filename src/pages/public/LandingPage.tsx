@@ -81,6 +81,35 @@ const SKILL_LABELS: Record<
   },
 };
 
+function formatHeroTitle(title: string) {
+  if (title.includes("|")) {
+    return title.split("|").map((part, index) => (
+      <span key={index} className="block">
+        {part.trim()}
+      </span>
+    ));
+  }
+
+  const brand = "Thái Phong Badminton Class";
+  const index = title.toLowerCase().indexOf(brand.toLowerCase());
+  if (index !== -1) {
+    const mainText = title.substring(0, index).trim();
+    const brandText = title.substring(index, index + brand.length);
+    const suffix = title.substring(index + brand.length);
+    return (
+      <>
+        {mainText}
+        <span className="block mt-1 sm:mt-2">
+          {brandText}
+        </span>
+        {suffix}
+      </>
+    );
+  }
+
+  return title;
+}
+
 export default function LandingPage() {
   const { session, profile } = useAuthContext();
   const [settings, setSettings] = useState<LandingSettings>({
@@ -267,7 +296,7 @@ export default function LandingPage() {
                 🏸 Thái Phong Badminton Class
               </span>
               <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-white via-white to-red-400 bg-clip-text text-transparent">
-                {settings.hero_title}
+                {formatHeroTitle(settings.hero_title)}
               </h1>
               <p className="text-base sm:text-lg text-white/70 max-w-xl leading-relaxed">
                 {settings.hero_subtitle}

@@ -69,9 +69,10 @@ const EMPTY_FORM = {
 }
 
 export default function UsersPage() {
-  const { session } = useAuthContext()
+  const { session, profile } = useAuthContext()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const isAdmin = profile?.role === 'admin'
   const [users, setUsers] = useState<UserRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -227,6 +228,63 @@ export default function UsersPage() {
     }
   }
 
+  async function toggleUserStatus(user: UserRow) {
+    const newStatus = user.status === 'inactive' ? 'active' : 'inactive'
+    const confirmMessage = newStatus === 'inactive' 
+      ? `Bạn có chắc chắn muốn khóa tài khoản của ${user.full_name}? Người dùng này sẽ không thể đăng nhập.`
+      : `Bạn có chắc chắn muốn mở khóa tài khoản của ${user.full_name}?`
+      
+    if (!confirm(confirmMessage)) return
+    
+    setSaving(true)
+    try {
+      const { error } = await (supabase as any).rpc('admin_set_user_status', {
+        p_user_id: user.id,
+        p_status: newStatus
+      })
+      if (error) throw error
+      
+      toast({ 
+        title: newStatus === 'inactive' ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản', 
+        description: user.full_name 
+      })
+      
+      if (editDialog.user?.id === user.id) {
+        setEditDialog({ open: false, user: null })
+      }
+      await loadUsers()
+    } catch (err: any) {
+      toast({ title: 'Lỗi cập nhật trạng thái', description: err.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteUser(user: UserRow) {
+    if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản của ${user.full_name}?\n\nHành động này sẽ xóa sạch thông tin tài khoản, các gói học, thông tin thanh toán, điểm danh... và KHÔNG thể khôi phục.`)) {
+      return
+    }
+    
+    setSaving(true)
+    try {
+      const { error } = await (supabase as any).rpc('admin_delete_user', {
+        p_user_id: user.id
+      })
+      if (error) throw error
+      
+      toast({ title: 'Đã xóa người dùng thành công', description: user.full_name })
+      
+      if (editDialog.user?.id === user.id) {
+        setEditDialog({ open: false, user: null })
+      }
+      await loadUsers()
+    } catch (err: any) {
+      toast({ title: 'Lỗi xóa người dùng', description: err.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function openEdit(user: UserRow) {
     setEditForm({ 
       full_name: user.full_name, 
@@ -283,7 +341,14 @@ export default function UsersPage() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
+                    {user.status === 'inactive' && (
+                      <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-655 border border-red-200 rounded font-medium">
+                        Đã khóa
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-0.5 mt-0.5">
                     <p className="text-xs text-gray-400">
                       {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
@@ -348,17 +413,19 @@ export default function UsersPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
-                      className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all"
+                      className="h-8 text-xs font-medium border-red-100 text-red-655 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all"
                     >
                       <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
                     </Button>
                   )}
-                  <button
-                    onClick={() => openEdit(user)}
-                    className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => openEdit(user)}
+                      className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -372,7 +439,14 @@ export default function UsersPage() {
                       </span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900 leading-tight">{user.full_name}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900 leading-tight">{user.full_name}</h4>
+                        {user.status === 'inactive' && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-red-50 text-red-655 border border-red-200 rounded font-medium">
+                            Đã khóa
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-gray-500 mt-1 font-medium">
                         {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
                       </p>
@@ -380,12 +454,14 @@ export default function UsersPage() {
                   </div>
                   
                   {/* Edit Button */}
-                  <button
-                    onClick={() => openEdit(user)}
-                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl border border-gray-100 transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => openEdit(user)}
+                      className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl border border-gray-100 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Tags & Package Info */}
@@ -495,12 +571,14 @@ export default function UsersPage() {
           <h2 className="text-xl font-bold text-gray-900">Người dùng</h2>
           <p className="text-sm text-gray-500 mt-0.5">Quản lý tài khoản hệ thống</p>
         </div>
-        <Button
-          onClick={() => setCreateDialog(true)}
-          className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
-        >
-          <Plus className="w-4 h-4" /> Thêm người dùng
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => setCreateDialog(true)}
+            className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
+          >
+            <Plus className="w-4 h-4" /> Thêm người dùng
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -757,6 +835,62 @@ export default function UsersPage() {
                 )}
               </div>
             )}
+
+            {/* Danger Zone & Account Status */}
+            <div className="border-t border-gray-100 pt-4 space-y-4">
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">Trạng thái tài khoản</Label>
+                <div className="flex items-center justify-between mt-2 bg-gray-50 p-3 rounded-xl border border-gray-150">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-gray-800">
+                      {editDialog.user?.status === 'inactive' ? 'Đã vô hiệu hóa (Khóa)' : 'Đang hoạt động'}
+                    </span>
+                    <span className="text-[11px] text-gray-450">
+                      {editDialog.user?.status === 'inactive' 
+                        ? 'Tài khoản này đang bị khóa và không thể đăng nhập.' 
+                        : 'Tài khoản bình thường và có thể đăng nhập.'}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={editDialog.user?.status === 'inactive' ? 'outline' : 'destructive'}
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => editDialog.user && toggleUserStatus(editDialog.user)}
+                    className={cn(
+                      "h-8 text-xs font-bold rounded-lg px-3 transition-colors",
+                      editDialog.user?.status === 'inactive' 
+                        ? "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800" 
+                        : "bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 hover:border-orange-300"
+                    )}
+                  >
+                    {editDialog.user?.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold text-red-650">Hành động nguy hiểm</Label>
+                <div className="flex items-center justify-between mt-2 bg-red-50/30 p-3 rounded-xl border border-red-100">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-red-700">Xóa vĩnh viễn tài khoản</span>
+                    <span className="text-[11px] text-gray-450 font-normal">
+                      Xóa sạch mọi dữ liệu liên quan và không thể phục hồi.
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => editDialog.user && deleteUser(editDialog.user)}
+                    className="h-8 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 transition-colors"
+                  >
+                    Xóa tài khoản
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter className="border-t border-gray-100 pt-3 flex gap-2">
             <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null })} className="rounded-xl">Hủy</Button>

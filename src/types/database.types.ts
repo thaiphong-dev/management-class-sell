@@ -376,6 +376,7 @@ export type Database = {
           phone: string | null
           avatar_url: string | null
           role: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
+          status: 'active' | 'inactive'
           created_at: string
           updated_at: string
         }
@@ -385,6 +386,7 @@ export type Database = {
           phone?: string | null
           avatar_url?: string | null
           role: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
+          status?: 'active' | 'inactive'
           created_at?: string
           updated_at?: string
         }
@@ -394,6 +396,7 @@ export type Database = {
           phone?: string | null
           avatar_url?: string | null
           role?: 'admin' | 'coach' | 'assistant' | 'student' | 'parent'
+          status?: 'active' | 'inactive'
           created_at?: string
           updated_at?: string
         }
@@ -745,6 +748,19 @@ export type Database = {
     Functions: {
       expire_overdue_packages: {
         Args: Record<string, never>
+        Returns: undefined
+      }
+      admin_set_user_status: {
+        Args: {
+          p_user_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      admin_delete_user: {
+        Args: {
+          p_user_id: string
+        }
         Returns: undefined
       }
     }
