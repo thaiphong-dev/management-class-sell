@@ -570,6 +570,126 @@ export type Database = {
         }
         Relationships: []
       }
+      assistants: {
+        Row: {
+          id: string
+          user_id: string
+          school_university: string | null
+          major: string | null
+          year_of_study: string | null
+          skills: string | null
+          bio: string | null
+          certifications: string[] | null
+          status: 'active' | 'inactive'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          school_university?: string | null
+          major?: string | null
+          year_of_study?: string | null
+          skills?: string | null
+          bio?: string | null
+          certifications?: string[] | null
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          school_university?: string | null
+          major?: string | null
+          year_of_study?: string | null
+          skills?: string | null
+          bio?: string | null
+          certifications?: string[] | null
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coach_assistant_registrations: {
+        Row: {
+          id: string
+          role: 'coach' | 'assistant'
+          first_name: string
+          last_name: string
+          gender: 'Nam' | 'Nữ'
+          date_of_birth: string
+          email: string
+          phone: string
+          avatar_url: string | null
+          address: string | null
+          specialty: string | null
+          experience_years: number
+          bio: string | null
+          certifications: string[] | null
+          achievements: string | null
+          school_university: string | null
+          major: string | null
+          year_of_study: string | null
+          skills: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          rejection_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          role: 'coach' | 'assistant'
+          first_name: string
+          last_name: string
+          gender: 'Nam' | 'Nữ'
+          date_of_birth: string
+          email: string
+          phone: string
+          avatar_url?: string | null
+          address?: string | null
+          specialty?: string | null
+          experience_years?: number
+          bio?: string | null
+          certifications?: string[] | null
+          achievements?: string | null
+          school_university?: string | null
+          major?: string | null
+          year_of_study?: string | null
+          skills?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          role?: 'coach' | 'assistant'
+          first_name?: string
+          last_name?: string
+          gender?: 'Nam' | 'Nữ'
+          date_of_birth?: string
+          email?: string
+          phone?: string
+          avatar_url?: string | null
+          address?: string | null
+          specialty?: string | null
+          experience_years?: number
+          bio?: string | null
+          certifications?: string[] | null
+          achievements?: string | null
+          school_university?: string | null
+          major?: string | null
+          year_of_study?: string | null
+          skills?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          rejection_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       active_student_packages: {

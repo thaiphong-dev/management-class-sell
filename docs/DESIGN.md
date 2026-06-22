@@ -254,8 +254,62 @@ const statusConfig = {
       style={{ width: `${value}%` }}
     />
   </div>
-</div>
+### 5.8 Responsive Table & List (Mobile Card Pattern)
+Đối với các trang hiển thị danh sách dạng bảng (như Danh sách Người dùng, Đơn đăng ký học viên, Đơn ứng tuyển), để tránh vỡ giao diện trên màn hình di động (< 768px), chúng ta áp dụng pattern chia đôi layout:
+- **Desktop/Tablet Layout:** Sử dụng thẻ `<Table>` của shadcn/ui bọc ngoài bởi `<div className="hidden md:block overflow-x-auto">`.
+- **Mobile Layout:** Sử dụng danh sách các Card được hiển thị dọc, bọc ngoài bởi `<div className="flex md:hidden flex-col gap-3 mt-2">`.
+
+Ví dụ cấu trúc React component:
+```tsx
+return (
+  <>
+    {/* Desktop & Tablet Layout */}
+    <div className="hidden md:block overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Học viên</TableHead>
+            {/* ... các cột khác */}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map(item => (
+            <TableRow key={item.id}>
+              <TableCell>{item.name}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+
+    {/* Mobile Card Layout */}
+    <div className="flex md:hidden flex-col gap-3">
+      {list.map(item => (
+        <div key={item.id} className="flex flex-col border border-gray-150/70 rounded-2xl p-4 gap-3 bg-white shadow-2xs relative">
+          <div className="flex items-center gap-3">
+            {/* Avatar & Tiêu đề chính */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-900">{item.name}</h4>
+              <p className="text-[11px] text-gray-500">{item.subtext}</p>
+            </div>
+          </div>
+          {/* Khối thông tin chi tiết */}
+          <div className="bg-gray-50/50 border border-gray-150/40 rounded-xl p-3 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-400 font-bold text-[10px]">CHI TIẾT</span>
+              <span className="font-semibold">{item.detail}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </>
+)
 ```
+
+Đối với các thanh bộ lọc danh sách dạng Tabs:
+- Trên Desktop/Tablet: Sử dụng `<TabsList className="hidden md:grid grid-cols-5">`.
+- Trên Mobile: Thay thế bằng component `<Select>` đồng bộ với `activeTab` state để tránh bị tràn/khuất các tabs trên màn hình nhỏ.
 
 ---
 

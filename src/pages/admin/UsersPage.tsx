@@ -15,7 +15,24 @@ import type { Profile, UserRole } from '@/types'
 
 interface UserRow extends Profile {
   email?: string
-  coach?: { id: string; specialty: string | null; experience_years: number; status: string } | null
+  coach?: { 
+    id: string
+    specialty: string | null
+    experience_years: number
+    status: string
+    certifications: string[] | null
+    bio: string | null
+  } | null
+  assistant?: {
+    id: string
+    school_university: string | null
+    major: string | null
+    year_of_study: string | null
+    skills: string | null
+    bio: string | null
+    certifications: string[] | null
+    status: string
+  } | null
   student?: { 
     id: string
     skill_level: string | null
@@ -59,18 +76,32 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>('all')
 
   const [createDialog, setCreateDialog] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [editDialog, setEditDialog] = useState<{ open: boolean; user: UserRow | null }>({ open: false, user: null })
-  const [editForm, setEditForm] = useState({ full_name: '', phone: '' })
+  const [editForm, setEditForm] = useState({ 
+    full_name: '', 
+    phone: '',
+    specialty: '',
+    experience_years: '0',
+    bio: '',
+    certifications: [] as string[],
+    school_university: '',
+    major: '',
+    year_of_study: '',
+    skills: ''
+  })
+  const [newCert, setNewCert] = useState('')
 
   async function loadUsers() {
     const { data, error } = await supabase
       .from('profiles')
       .select(`
         *,
-        coach:coaches(id, specialty, experience_years, status),
+        coach:coaches(id, specialty, experience_years, status, certifications, bio),
+        assistant:assistants(id, school_university, major, year_of_study, skills, bio, certifications, status),
         student:students(
           id, 
           skill_level, 
@@ -147,23 +178,69 @@ export default function UsersPage() {
   async function saveEdit() {
     if (!editDialog.user) return
     setSaving(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: editForm.full_name.trim(), phone: editForm.phone.trim() || null } as never)
-      .eq('id', editDialog.user.id)
+    try {
+      // 1. Update Profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: editForm.full_name.trim(), 
+          phone: editForm.phone.trim() || null 
+        } as never)
+        .eq('id', editDialog.user.id)
 
-    if (error) {
-      toast({ title: 'Lỗi cập nhật', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Đã cập nhật thông tin' })
+      if (profileError) throw profileError
+
+      // 2. Update Role specific profile
+      if (editDialog.user.role === 'coach') {
+        const { error: coachError } = await supabase
+          .from('coaches')
+          .update({
+            specialty: editForm.specialty.trim() || null,
+            experience_years: parseInt(editForm.experience_years) || 0,
+            bio: editForm.bio.trim() || null,
+            certifications: editForm.certifications.length > 0 ? editForm.certifications : null
+          } as never)
+          .eq('user_id', editDialog.user.id)
+        if (coachError) throw coachError
+      } else if ((editDialog.user.role as string) === 'assistant') {
+        const { error: assistantError } = await supabase
+          .from('assistants')
+          .update({
+            school_university: editForm.school_university.trim() || null,
+            major: editForm.major.trim() || null,
+            year_of_study: editForm.year_of_study.trim() || null,
+            skills: editForm.skills.trim() || null,
+            bio: editForm.bio.trim() || null,
+            certifications: editForm.certifications.length > 0 ? editForm.certifications : null
+          } as never)
+          .eq('user_id', editDialog.user.id)
+        if (assistantError) throw assistantError
+      }
+
+      toast({ title: 'Đã cập nhật thông tin thành công' })
       setEditDialog({ open: false, user: null })
       await loadUsers()
+    } catch (err: any) {
+      toast({ title: 'Lỗi cập nhật', description: err.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   function openEdit(user: UserRow) {
-    setEditForm({ full_name: user.full_name, phone: user.phone ?? '' })
+    setEditForm({ 
+      full_name: user.full_name, 
+      phone: user.phone ?? '',
+      specialty: user.coach?.specialty ?? '',
+      experience_years: user.coach?.experience_years?.toString() ?? '0',
+      bio: (user.coach?.bio ?? user.assistant?.bio ?? ''),
+      certifications: (user.coach?.certifications ?? user.assistant?.certifications ?? []),
+      school_university: user.assistant?.school_university ?? '',
+      major: user.assistant?.major ?? '',
+      year_of_study: user.assistant?.year_of_study ?? '',
+      skills: user.assistant?.skills ?? ''
+    })
+    setNewCert('')
     setEditDialog({ open: true, user })
   }
 
@@ -193,93 +270,216 @@ export default function UsersPage() {
     }
 
     return (
-      <div className="divide-y divide-gray-100 mt-1">
+      <div className="flex flex-col gap-3 md:block md:divide-y md:divide-gray-100 mt-1">
         {list.map(user => {
           const RoleIcon = ROLE_ICONS[user.role]
           return (
-            <div key={user.id} className="flex items-center gap-3 py-3 px-1 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-sm font-semibold">
-                  {user.full_name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
-                <div className="flex flex-col gap-0.5 mt-0.5">
-                  <p className="text-xs text-gray-400">
-                    {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
-                  </p>
-                  {user.role === 'student' && (() => {
-                    const activePkg = user.student?.student_packages?.find(
-                      (sp: any) => sp.status === 'active' || sp.status === 'pending_activation'
-                    )
-                    if (!activePkg) {
-                      return <p className="text-[11px] text-gray-400 italic">Chưa có thẻ học</p>
-                    }
-                    const pkgName = activePkg.packages?.name ?? 'Gói học'
-                    const statusLabel = activePkg.status === 'active' ? 'Đang dùng' : 'Chờ kích hoạt'
-                    const sessionsText = activePkg.sessions_remaining !== null 
-                      ? ` · Còn ${activePkg.sessions_remaining}/${activePkg.sessions_total} buổi` 
-                      : ' · Không giới hạn buổi'
-                    const expiryText = activePkg.expires_at 
-                      ? ` · Hạn: ${formatDate(activePkg.expires_at)}` 
-                      : (activePkg.status === 'pending_activation' ? ' · Chưa kích hoạt' : '')
+            <div key={user.id}>
+              {/* Desktop & Tablet Row Layout */}
+              <div className="hidden md:flex items-center gap-3 py-3 px-1 hover:bg-gray-55 rounded-xl transition-colors">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-semibold">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    <p className="text-xs text-gray-400">
+                      {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
+                    </p>
+                    {user.role === 'student' && (() => {
+                      const activePkg = user.student?.student_packages?.find(
+                        (sp: any) => sp.status === 'active' || sp.status === 'pending_activation'
+                      )
+                      if (!activePkg) {
+                        return <p className="text-[11px] text-gray-400 italic">Chưa có thẻ học</p>
+                      }
+                      const pkgName = activePkg.packages?.name ?? 'Gói học'
+                      const statusLabel = activePkg.status === 'active' ? 'Đang dùng' : 'Chờ kích hoạt'
+                      const sessionsText = activePkg.sessions_remaining !== null 
+                        ? ` · Còn ${activePkg.sessions_remaining}/${activePkg.sessions_total} buổi` 
+                        : ' · Không giới hạn buổi'
+                      const expiryText = activePkg.expires_at 
+                        ? ` · Hạn: ${formatDate(activePkg.expires_at)}` 
+                        : (activePkg.status === 'pending_activation' ? ' · Chưa kích hoạt' : '')
 
-                    return (
-                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                        <span className={cn(
-                          "text-[9px] px-1.5 py-0.5 rounded font-medium",
-                          activePkg.status === 'active' ? "bg-green-50 text-green-600 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"
-                        )}>
-                          {statusLabel}
-                        </span>
-                        <span className="text-[11px] font-semibold text-gray-700">
-                          {pkgName}
-                        </span>
-                        <span className="text-[11px] text-gray-500">
-                          {sessionsText}{expiryText}
-                        </span>
-                      </div>
-                    )
-                  })()}
+                      return (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <span className={cn(
+                            "text-[9px] px-1.5 py-0.5 rounded font-medium",
+                            activePkg.status === 'active' ? "bg-green-50 text-green-600 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"
+                          )}>
+                            {statusLabel}
+                          </span>
+                          <span className="text-[11px] font-semibold text-gray-700">
+                            {pkgName}
+                          </span>
+                          <span className="text-[11px] text-gray-500">
+                            {sessionsText}{expiryText}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {user.role === 'student' && user.student?.skill_level && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">
+                      {SKILL_LABELS[user.student.skill_level] ?? user.student.skill_level}
+                    </span>
+                  )}
+                  {user.role === 'coach' && user.coach?.experience_years !== undefined && (
+                    <span className="text-xs px-2 py-0.5 bg-court-50 text-court-700 rounded-full">
+                      {user.coach.experience_years} năm KN
+                    </span>
+                  )}
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+                    user.role === 'admin'     ? 'bg-purple-100 text-purple-700' :
+                    user.role === 'coach'     ? 'bg-court-100 text-court-700' :
+                    (user.role as string) === 'assistant' ? 'bg-orange-100 text-orange-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    <RoleIcon className="w-3 h-3" />
+                    {ROLE_LABELS[user.role]}
+                  </span>
+                  {user.role === 'student' && user.student?.id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
+                      className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
+                    </Button>
+                  )}
+                  <button
+                    onClick={() => openEdit(user)}
+                    className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {user.role === 'student' && user.student?.skill_level && (
-                  <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">
-                    {SKILL_LABELS[user.student.skill_level] ?? user.student.skill_level}
-                  </span>
-                )}
-                {user.role === 'coach' && user.coach?.experience_years !== undefined && (
-                  <span className="text-xs px-2 py-0.5 bg-court-50 text-court-700 rounded-full">
-                    {user.coach.experience_years} năm KN
-                  </span>
-                )}
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-                  user.role === 'admin'     ? 'bg-purple-100 text-purple-700' :
-                  user.role === 'coach'     ? 'bg-court-100 text-court-700' :
-                  (user.role as string) === 'assistant' ? 'bg-orange-100 text-orange-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  <RoleIcon className="w-3 h-3" />
-                  {ROLE_LABELS[user.role]}
-                </span>
-                {user.role === 'student' && user.student?.id && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
-                    className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all"
+
+              {/* Mobile Card Layout */}
+              <div className="flex md:hidden flex-col border border-gray-150/70 rounded-2xl p-4 gap-3 bg-white shadow-2xs relative">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm font-semibold">
+                        {user.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 leading-tight">{user.full_name}</h4>
+                      <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                        {user.phone ?? 'Chưa có SĐT'} · {formatDate(user.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Edit Button */}
+                  <button
+                    onClick={() => openEdit(user)}
+                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl border border-gray-100 transition-colors"
                   >
-                    <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
-                  </Button>
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Tags & Package Info */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-dashed border-gray-100">
+                  {/* Role Tag */}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                    user.role === 'admin'     ? 'bg-purple-100 text-purple-700' :
+                    user.role === 'coach'     ? 'bg-court-100 text-court-700' :
+                    (user.role as string) === 'assistant' ? 'bg-orange-100 text-orange-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    <RoleIcon className="w-2.5 h-2.5" />
+                    {ROLE_LABELS[user.role]}
+                  </span>
+
+                  {/* Specialty / Level Tag */}
+                  {user.role === 'student' && user.student?.skill_level && (
+                    <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-semibold">
+                      {SKILL_LABELS[user.student.skill_level] ?? user.student.skill_level}
+                    </span>
+                  )}
+                  {user.role === 'coach' && user.coach?.experience_years !== undefined && (
+                    <span className="text-[10px] px-2 py-0.5 bg-court-50 text-court-700 rounded-full font-semibold">
+                      {user.coach.experience_years} năm KN
+                    </span>
+                  )}
+                </div>
+
+                {/* Student Package & Assign card button */}
+                {user.role === 'student' && (
+                  <div className="flex flex-col gap-2 bg-gray-50/50 border border-gray-150/40 rounded-xl p-2.5 mt-0.5">
+                    {(() => {
+                      const activePkg = user.student?.student_packages?.find(
+                        (sp: any) => sp.status === 'active' || sp.status === 'pending_activation'
+                      )
+                      if (!activePkg) {
+                        return (
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] text-gray-500 italic">Chưa có thẻ học</p>
+                            {user.student?.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
+                                className="h-7 text-[10px] font-bold border-red-200 text-red-650 hover:bg-red-50 hover:border-red-300 gap-1 rounded-lg transition-all"
+                              >
+                                <CreditCard className="w-3 h-3" /> Cấp thẻ
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      }
+                      const pkgName = activePkg.packages?.name ?? 'Gói học'
+                      const statusLabel = activePkg.status === 'active' ? 'Đang dùng' : 'Chờ kích hoạt'
+                      const sessionsText = activePkg.sessions_remaining !== null 
+                        ? `Còn ${activePkg.sessions_remaining}/${activePkg.sessions_total} buổi` 
+                        : 'Không giới hạn buổi'
+                      const expiryText = activePkg.expires_at 
+                        ? `Hạn: ${formatDate(activePkg.expires_at)}` 
+                        : (activePkg.status === 'pending_activation' ? 'Chưa kích hoạt' : '')
+
+                      return (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn(
+                                "text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase",
+                                activePkg.status === 'active' ? "bg-green-50 text-green-700 border border-green-200/80" : "bg-gray-100 text-gray-500 border border-gray-250/70"
+                              )}>
+                                {statusLabel}
+                              </span>
+                              <span className="text-xs font-bold text-gray-800">
+                                {pkgName}
+                              </span>
+                            </div>
+                            {user.student?.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${user.student!.id}`)}
+                                className="h-7 text-[10px] font-bold border-red-200 text-red-650 hover:bg-red-50 hover:border-red-300 gap-1 rounded-lg transition-all"
+                              >
+                                <CreditCard className="w-3 h-3" /> Cấp thẻ
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 font-semibold leading-tight">
+                            {sessionsText} {expiryText && ` · ${expiryText}`}
+                          </p>
+                        </div>
+                      )
+                    })()}
+                  </div>
                 )}
-                <button
-                  onClick={() => openEdit(user)}
-                  className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
               </div>
             </div>
           )
@@ -315,8 +515,29 @@ export default function UsersPage() {
           />
         </div>
 
-        <Tabs defaultValue="all">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {/* Mobile Role Filter Dropdown */}
+          <div className="md:hidden mb-4">
+            <Label className="text-[10px] font-bold text-gray-500 mb-1.5 block uppercase tracking-wider">Lọc theo vai trò</Label>
+            <Select 
+              value={activeTab} 
+              onValueChange={setActiveTab}
+            >
+              <SelectTrigger className="w-full h-10 bg-gray-50 border border-gray-250 rounded-xl text-sm font-semibold focus:ring-1 focus:ring-primary-500/20">
+                <SelectValue placeholder="Chọn vai trò" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-gray-200">
+                <SelectItem value="all" className="font-semibold text-gray-750">Tất cả ({filtered.length})</SelectItem>
+                <SelectItem value="admin" className="font-semibold text-gray-750">Admin ({filtered.filter(u => u.role === 'admin').length})</SelectItem>
+                <SelectItem value="coach" className="font-semibold text-gray-750">HLV ({filtered.filter(u => u.role === 'coach').length})</SelectItem>
+                <SelectItem value="assistant" className="font-semibold text-gray-750">Trợ giảng ({filtered.filter(u => (u.role as string) === 'assistant').length})</SelectItem>
+                <SelectItem value="student" className="font-semibold text-gray-750">Học viên ({filtered.filter(u => u.role === 'student').length})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop & Tablet TabsList */}
+          <TabsList className="hidden md:grid w-full grid-cols-5 bg-gray-100 p-1 rounded-xl">
             <TabsTrigger value="all">Tất cả ({filtered.length})</TabsTrigger>
             <TabsTrigger value="admin">Admin ({filtered.filter(u => u.role === 'admin').length})</TabsTrigger>
             <TabsTrigger value="coach">HLV ({filtered.filter(u => u.role === 'coach').length})</TabsTrigger>
@@ -409,28 +630,142 @@ export default function UsersPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog.open} onOpenChange={open => !open && setEditDialog({ open: false, user: null })}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto pr-1">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa thông tin</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
             <div>
-              <Label>Họ và tên</Label>
-              <Input className="mt-1" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} />
+              <Label>Họ và tên *</Label>
+              <Input className="mt-1 rounded-xl" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} />
             </div>
             <div>
               <Label>Số điện thoại</Label>
-              <Input className="mt-1" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} />
+              <Input className="mt-1 rounded-xl" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} />
             </div>
+
+            {/* Coach fields */}
+            {editDialog.user?.role === 'coach' && (
+              <>
+                <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                  <div>
+                    <Label>Chuyên môn</Label>
+                    <Input className="mt-1 rounded-xl" placeholder="VD: Đánh đôi, Đơn nam..." value={editForm.specialty} onChange={e => setEditForm(p => ({ ...p, specialty: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Số năm kinh nghiệm</Label>
+                    <Input className="mt-1 rounded-xl" type="number" min="0" value={editForm.experience_years} onChange={e => setEditForm(p => ({ ...p, experience_years: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Giới thiệu (Bio)</Label>
+                  <textarea
+                    rows={3}
+                    className="mt-1 w-full px-3 py-2 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm"
+                    placeholder="Mô tả ngắn gọn về HLV..."
+                    value={editForm.bio}
+                    onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Assistant fields */}
+            {(editDialog.user?.role as string) === 'assistant' && (
+              <>
+                <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                  <div className="col-span-2">
+                    <Label>Trường học / Đại học</Label>
+                    <Input className="mt-1 rounded-xl" placeholder="VD: Đại học Sư phạm TDTT" value={editForm.school_university} onChange={e => setEditForm(p => ({ ...p, school_university: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Chuyên ngành</Label>
+                    <Input className="mt-1 rounded-xl" placeholder="VD: Giáo dục thể chất" value={editForm.major} onChange={e => setEditForm(p => ({ ...p, major: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Năm học</Label>
+                    <Input className="mt-1 rounded-xl" placeholder="VD: Sinh viên năm 3" value={editForm.year_of_study} onChange={e => setEditForm(p => ({ ...p, year_of_study: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Kỹ năng trợ giảng</Label>
+                  <textarea
+                    rows={2}
+                    className="mt-1 w-full px-3 py-2 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm"
+                    placeholder="Mô tả kỹ năng hỗ trợ lớp học..."
+                    value={editForm.skills}
+                    onChange={e => setEditForm(p => ({ ...p, skills: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label>Giới thiệu (Bio)</Label>
+                  <textarea
+                    rows={2}
+                    className="mt-1 w-full px-3 py-2 bg-gray-55 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm"
+                    placeholder="Mô tả ngắn gọn về trợ giảng..."
+                    value={editForm.bio}
+                    onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Certifications (Common to both) */}
+            {(editDialog.user?.role === 'coach' || (editDialog.user?.role as string) === 'assistant') && (
+              <div className="border-t border-gray-100 pt-3">
+                <Label>Bằng cấp & Chứng chỉ</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="VD: Chứng chỉ BWF Cấp 1..."
+                    value={newCert}
+                    onChange={e => setNewCert(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), (() => {
+                      if (newCert.trim() && !editForm.certifications.includes(newCert.trim())) {
+                        setEditForm(p => ({ ...p, certifications: [...p.certifications, newCert.trim()] }))
+                        setNewCert('')
+                      }
+                    })())}
+                    className="rounded-xl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (newCert.trim() && !editForm.certifications.includes(newCert.trim())) {
+                        setEditForm(p => ({ ...p, certifications: [...p.certifications, newCert.trim()] }))
+                        setNewCert('')
+                      }
+                    }}
+                    className="rounded-xl"
+                  >
+                    Thêm
+                  </Button>
+                </div>
+                {editForm.certifications.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-gray-55 rounded-xl border border-gray-200">
+                    {editForm.certifications.map(c => (
+                      <span key={c} className="inline-flex items-center gap-1 bg-white text-xs text-gray-700 px-2 py-0.5 rounded-lg border border-gray-150 shadow-sm font-medium">
+                        {c}
+                        <button type="button" onClick={() => setEditForm(p => ({ ...p, certifications: p.certifications.filter(x => x !== c) }))} className="text-red-500 hover:text-red-700 font-bold ml-1">
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 italic mt-1">Chưa có chứng chỉ</p>
+                )}
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null })}>Hủy</Button>
+          <DialogFooter className="border-t border-gray-100 pt-3 flex gap-2">
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null })} className="rounded-xl">Hủy</Button>
             <Button
               onClick={saveEdit}
               disabled={!editForm.full_name.trim() || saving}
-              className="bg-primary-600 hover:bg-primary-700 text-white"
+              className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold"
             >
-              {saving ? 'Đang lưu...' : 'Lưu'}
+              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Save, Settings, Phone, Mail, Globe, Sparkles, BookOpen, CreditCard } from 'lucide-react'
+import { Save, Settings, Phone, Mail, Globe, Sparkles, BookOpen, CreditCard, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -58,6 +58,11 @@ export default function AdminSettingsPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [qrLoading, setQrLoading] = useState(true)
+
+  useEffect(() => {
+    setQrLoading(true)
+  }, [settings.bank_id, settings.bank_account, settings.bank_bin])
 
   useEffect(() => {
     async function loadSettings() {
@@ -363,10 +368,14 @@ export default function AdminSettingsPage() {
               <p className="text-xs font-bold text-gray-700">Xem trước mã QR VietQR thử nghiệm</p>
               {settings.bank_id && settings.bank_account ? (
                 <div className="relative w-44 h-44 bg-white border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center p-2 shadow-sm">
+                  {qrLoading && (
+                    <Loader2 className="w-6 h-6 animate-spin text-red-650 absolute" />
+                  )}
                   <img
-                    src={`https://img.vietqr.io/image/${settings.bank_id}-${settings.bank_account}-compact2.png?amount=5000&addInfo=TESTQR&accountName=${encodeURIComponent(settings.bank_account_name || '')}`}
+                    src={`https://img.vietqr.io/image/${settings.bank_bin || settings.bank_id}-${settings.bank_account}-compact2.png?amount=5000&addInfo=TESTQR&accountName=${encodeURIComponent(settings.bank_account_name || '')}`}
                     alt="VietQR Test Preview"
-                    className="max-w-full max-h-full object-contain"
+                    className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${qrLoading ? 'opacity-0' : 'opacity-100'}`}
+                    onLoad={() => setQrLoading(false)}
                   />
                 </div>
               ) : (

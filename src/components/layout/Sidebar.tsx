@@ -22,6 +22,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { icon: BookOpen,        label: 'Lớp học',       path: '/admin/classes' },
     { icon: CreditCard,      label: 'Gói học',       path: '/admin/packages' },
     { icon: FileText,        label: 'Đơn đăng ký học', path: '/admin/registrations' },
+    { icon: ClipboardList,   label: 'Đơn ứng tuyển', path: '/admin/staff-registrations' },
     { icon: BarChart3,       label: 'Báo cáo',       path: '/admin/reports' },
     { icon: Settings,        label: 'Cấu hình trang chủ', path: '/admin/settings' },
   ],

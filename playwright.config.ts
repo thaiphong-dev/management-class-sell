@@ -17,6 +17,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
+    ignoreHTTPSErrors: true,
   },
   projects: [
     {

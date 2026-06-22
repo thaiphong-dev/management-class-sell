@@ -6,12 +6,15 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { 
   UserPlus, QrCode, Info, 
-  Trash2, Plus, Heart, Loader2,
-  Calendar, ClipboardList, TrendingUp, CreditCard
+  Trash2, Heart, Loader2,
+  Calendar, ClipboardList, TrendingUp, CreditCard,
+  ShieldAlert, CheckCircle2, GraduationCap, Check,
+  Download
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface ChildProfile {
   id: string; // studentId
@@ -82,6 +85,23 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.
   })
 }
 
+const handleDownloadQr = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    window.open(url, '_blank')
+  }
+}
+
 export default function ParentFamilyPage() {
   const { profile, session } = useAuthContext()
   const { toast } = useToast()
@@ -99,9 +119,10 @@ export default function ParentFamilyPage() {
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [selectedChildForQr, setSelectedChildForQr] = useState<ChildProfile | null>(null)
   
-  const [addChildOpen, setAddChildOpen] = useState(false)
   const [registerClassOpen, setRegisterClassOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [paymentQrLoading, setPaymentQrLoading] = useState(true)
+  const [studentQrLoading, setStudentQrLoading] = useState(true)
 
   // Add child form states
   const [newChildName, setNewChildName] = useState('')
@@ -120,13 +141,10 @@ export default function ParentFamilyPage() {
   // Health survey (10 questions)
   const [q1, setQ1] = useState(false)
   const [q2, setQ2] = useState(false)
-  const [q3, setQ3] = useState(false)
   const [q4, setQ4] = useState(false)
   const [q5, setQ5] = useState(false)
-  const [q6, setQ6] = useState(false)
   const [q7, setQ7] = useState(false)
   const [q7Detail, setQ7Detail] = useState('')
-  const [q8, setQ8] = useState(false)
   const [q9, setQ9] = useState(false)
   const [q9Detail, setQ9Detail] = useState('')
   const [q10, setQ10] = useState(false)
@@ -183,7 +201,7 @@ export default function ParentFamilyPage() {
 
       if (childrenError) throw childrenError
 
-      setChildren((childrenData || []).map((c: any) => ({
+      const formattedChildren = (childrenData || []).map((c: any) => ({
         id: c.id,
         profileId: c.user_id,
         fullName: c.profiles?.full_name || 'Học viên',
@@ -192,15 +210,34 @@ export default function ParentFamilyPage() {
         emergencyContact: c.emergency_contact,
         notes: c.notes,
         status: c.status,
-      })))
+      }))
+      setChildren(formattedChildren)
+
+      if (formattedChildren.length > 0) {
+        setSelectedChildId(prev => prev || formattedChildren[0].id)
+      } else {
+        setSelectedChildId('new')
+      }
 
       // 3. Get Classes
       const { data: classesData } = await supabase
         .from('classes')
-        .select('id, name, skill_level')
+        .select(`
+          id, name, max_students, skill_level,
+          facilities(name), courts(name)
+        `)
         .eq('status', 'active')
         .order('name')
-      setClasses(classesData || [])
+
+      const formattedClasses = (classesData || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        skill_level: c.skill_level,
+        max_students: c.max_students,
+        facility_name: c.facilities?.name,
+        court_name: c.courts?.name
+      }))
+      setClasses(formattedClasses || [])
 
       // 4. Get Packages
       const { data: packagesData } = await supabase
@@ -233,7 +270,8 @@ export default function ParentFamilyPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [profile, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
 
   useEffect(() => {
     loadData()
@@ -268,71 +306,6 @@ export default function ParentFamilyPage() {
     }
   }, [createdRegistrationId, toast])
 
-  const handleAddChild = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newChildName.trim()) {
-      toast({ title: 'Vui lòng nhập tên của con', variant: 'destructive' })
-      return
-    }
-    if (!newChildDob) {
-      toast({ title: 'Vui lòng chọn ngày sinh', variant: 'destructive' })
-      return
-    }
-
-    setIsSubmitting(true)
-    try {
-      const childProfileId = crypto.randomUUID()
-
-      // 1. Insert child profile
-      const { error: profileError } = await (supabase
-        .from('profiles') as any)
-        .insert({
-          id: childProfileId,
-          full_name: newChildName.trim(),
-          role: 'student',
-          gender: newChildGender,
-        })
-
-      if (profileError) throw profileError
-
-      // 2. Insert child student record linked to parent
-      const emergencyContact = `Phụ huynh: ${profile?.full_name} - SĐT: ${profile?.phone || 'N/A'}`
-      const { data: newStudent, error: studentError } = await (supabase
-        .from('students') as any)
-        .insert({
-          user_id: childProfileId,
-          skill_level: 'beginner',
-          date_of_birth: newChildDob,
-          emergency_contact: emergencyContact,
-          notes: newChildNotes.trim() || 'Học viên con được phụ huynh tạo.',
-          parent_id: parentRecord.id,
-          status: 'active',
-        })
-        .select('id')
-        .single()
-
-      if (studentError) throw studentError
-
-      if (newStudent) {
-        setActiveChildId(newStudent.id)
-      }
-
-      toast({ title: 'Thêm con thành công!' })
-      setAddChildOpen(false)
-      // Reset form
-      setNewChildName('')
-      setNewChildGender('Nam')
-      setNewChildDob('')
-      setNewChildNotes('')
-      await loadData()
-    } catch (err: any) {
-      console.error(err)
-      toast({ title: 'Lỗi thêm con', description: err.message, variant: 'destructive' })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
@@ -358,15 +331,73 @@ export default function ParentFamilyPage() {
 
     setIsSubmitting(true)
     try {
-      // 1. Compress photo if selected
+      let finalChildId = selectedChildId
+      let finalProfileId = ''
+      let finalChildName = ''
+      let finalChildGender = 'Nam'
+      let finalChildDob = ''
+
+      // 1. Create child profile & student record if "new" is selected
+      if (selectedChildId === 'new') {
+        if (!newChildName.trim()) {
+          throw new Error('Vui lòng nhập tên của con')
+        }
+        if (!newChildDob) {
+          throw new Error('Vui lòng chọn ngày sinh của con')
+        }
+
+        const childProfileId = crypto.randomUUID()
+
+        // Insert child profile
+        const { error: profileError } = await (supabase
+          .from('profiles') as any)
+          .insert({
+            id: childProfileId,
+            full_name: newChildName.trim(),
+            role: 'student',
+            gender: newChildGender,
+          })
+
+        if (profileError) throw profileError
+
+        // Insert child student record linked to parent
+        const emergencyContact = `Phụ huynh: ${profile?.full_name} - SĐT: ${profile?.phone || 'N/A'}`
+        const { data: newStudent, error: studentError } = await (supabase
+          .from('students') as any)
+          .insert({
+            user_id: childProfileId,
+            skill_level: 'beginner',
+            date_of_birth: newChildDob,
+            emergency_contact: emergencyContact,
+            notes: newChildNotes.trim() || 'Học viên con được phụ huynh tạo.',
+            parent_id: parentRecord.id,
+            status: 'active',
+          })
+          .select('id')
+          .single()
+
+        if (studentError || !newStudent) throw studentError || new Error('Không thể tạo hồ sơ con')
+
+        finalChildId = newStudent.id
+        finalProfileId = childProfileId
+        finalChildName = newChildName.trim()
+        finalChildGender = newChildGender
+        finalChildDob = newChildDob
+      } else {
+        const child = children.find(c => c.id === selectedChildId)
+        if (!child) throw new Error('Học viên không tồn tại')
+        finalChildId = child.id
+        finalProfileId = child.profileId
+        finalChildName = child.fullName
+        finalChildGender = child.gender
+        finalChildDob = child.dateOfBirth || new Date().toISOString().split('T')[0]
+      }
+
+      // 2. Compress photo if selected
       let photoBase64 = null
       if (photoFile) {
         photoBase64 = await compressImage(photoFile)
       }
-
-      // 2. Get Child Details
-      const child = children.find(c => c.id === selectedChildId)
-      if (!child) throw new Error('Học viên không tồn tại')
 
       // 3. Get Class & Package Details
       const selectedClass = classes.find(c => c.id === selectedClassId)
@@ -379,14 +410,14 @@ export default function ParentFamilyPage() {
         await (supabase
           .from('profiles') as any)
           .update({ avatar_url: photoBase64 })
-          .eq('id', child.profileId)
+          .eq('id', finalProfileId)
       }
 
       // 4. Create Package
       const { data: studentPkg, error: spError } = await (supabase
         .from('student_packages') as any)
         .insert({
-          student_id: selectedChildId,
+          student_id: finalChildId,
           package_id: selectedPackageId,
           sessions_total: selectedPackage.sessions_count,
           sessions_remaining: selectedPackage.sessions_count,
@@ -402,12 +433,12 @@ export default function ParentFamilyPage() {
       const { data: payment, error: payError } = await (supabase
         .from('payments') as any)
         .insert({
-          student_id: selectedChildId,
+          student_id: finalChildId,
           student_package_id: studentPkg.id,
           amount: Number(selectedPackage.price),
           payment_method: 'transfer',
           status: 'pending',
-          notes: `Đăng ký học cho con ${child.fullName}`
+          notes: `Đăng ký học cho con ${finalChildName}`
         })
         .select('id')
         .single()
@@ -419,32 +450,20 @@ export default function ParentFamilyPage() {
         .from('class_students') as any)
         .upsert({
           class_id: selectedClassId,
-          student_id: selectedChildId,
+          student_id: finalChildId,
           status: 'active'
         })
 
       if (csError) throw csError
 
-      // 7. Health Notes Summary
-      const healthSummaryList = []
-      if (q1) healthSummaryList.push('Bệnh tim')
-      if (q2 || q3) healthSummaryList.push('Đau ngực')
-      if (q4) healthSummaryList.push('Chóng mặt/Ngất')
-      if (q5) healthSummaryList.push('Khớp')
-      if (q6) healthSummaryList.push('Cao huyết áp')
-      if (q7) healthSummaryList.push(`Uống thuốc: ${q7Detail}`)
-      if (q8) healthSummaryList.push('Có thai/sinh con')
-      if (q9) healthSummaryList.push(`Hạn chế thể chất: ${q9Detail}`)
-      if (q10) healthSummaryList.push(`Khuyết tật: ${q10Detail}`)
-
-      // 8. Create Registration record
-      const [lastName, ...firstParts] = child.fullName.split(' ')
+      // 7. Create Registration record
+      const [lastName, ...firstParts] = finalChildName.split(' ')
       const firstName = firstParts.join(' ')
 
       const { data: reg, error: regError } = await (supabase
         .from('registrations') as any)
         .insert({
-          student_id: selectedChildId,
+          student_id: finalChildId,
           class_id: selectedClassId,
           package_id: selectedPackageId,
           student_package_id: studentPkg.id,
@@ -453,20 +472,20 @@ export default function ParentFamilyPage() {
           status: 'pending',
           first_name: firstName || 'Học viên',
           last_name: lastName || '',
-          gender: child.gender,
-          date_of_birth: child.dateOfBirth || new Date().toISOString().split('T')[0],
+          gender: finalChildGender,
+          date_of_birth: finalChildDob,
           mobile_phone: profile?.phone || 'N/A',
           email: session?.user?.email || 'N/A',
           club_name: clubName.trim() || null,
           q1_heart_condition: q1,
           q2_chest_pain_activity: q2,
-          q3_chest_pain_rest: q3,
+          q3_chest_pain_rest: false,
           q4_fainting_dizziness: q4,
           q5_joint_problem: q5,
-          q6_high_blood_pressure: q6,
+          q6_high_blood_pressure: false,
           q7_medications: q7,
           q7_medications_detail: q7Detail || null,
-          q8_pregnant: q8,
+          q8_pregnant: false,
           q9_other_reasons: q9,
           q9_other_reasons_detail: q9Detail || null,
           q10_disability: q10,
@@ -487,6 +506,7 @@ export default function ParentFamilyPage() {
       setPaymentAmount(Number(selectedPackage.price))
       setPaymentConfirmed(false)
       setRegisterClassOpen(false)
+      setPaymentQrLoading(true)
       setPaymentModalOpen(true)
 
       // Reset form
@@ -496,9 +516,15 @@ export default function ParentFamilyPage() {
       setClubName('')
       setPhotoFile(null)
       setPhotoPreview(null)
-      setQ1(false); setQ2(false); setQ3(false); setQ4(false); setQ5(false);
-      setQ6(false); setQ7(false); setQ7Detail(''); setQ8(false); setQ9(false);
-      setQ9Detail(''); setQ10(false); setQ10Detail('')
+      setNewChildName('')
+      setNewChildGender('Nam')
+      setNewChildDob('')
+      setNewChildNotes('')
+      setQ1(false); setQ2(false); setQ4(false); setQ5(false);
+      setQ7(false); setQ7Detail(''); setQ9(false); setQ9Detail('');
+      setQ10(false); setQ10Detail('')
+
+      await loadData()
     } catch (err: any) {
       console.error(err)
       toast({ title: 'Lỗi đăng ký khóa học', description: err.message, variant: 'destructive' })
@@ -574,7 +600,7 @@ export default function ParentFamilyPage() {
   // Calculate VietQR values
   const shortId = createdRegistrationId.substring(0, 8)
   const paymentMemo = `TPB${shortId}`
-  const vietQrUrl = `https://img.vietqr.io/image/${bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${paymentAmount}&addInfo=${paymentMemo}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`
+  const vietQrUrl = `https://img.vietqr.io/image/${bankDetails.bank_bin || bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${paymentAmount}&addInfo=${paymentMemo}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`
 
   return (
     <div className="space-y-6">
@@ -585,12 +611,6 @@ export default function ParentFamilyPage() {
           <p className="text-sm text-gray-500 mt-0.5">Quản lý hồ sơ các con, mã điểm danh QR, và đăng ký lớp học.</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Button
-            onClick={() => setAddChildOpen(true)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl px-4 py-2 text-xs font-bold border border-gray-200/50 shadow-sm"
-          >
-            <Plus className="w-4 h-4 mr-1 text-gray-600" /> Thêm con mới
-          </Button>
           <Button
             onClick={() => setRegisterClassOpen(true)}
             className="bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2 text-xs font-bold shadow-sm"
@@ -603,7 +623,7 @@ export default function ParentFamilyPage() {
       {/* Children list */}
       {children.length === 0 ? (
         <div className="bg-white border border-gray-150 rounded-2xl p-8 text-center text-gray-400 text-xs shadow-sm">
-          Chưa có hồ sơ học viên con nào. Hãy nhấp nút "Thêm con mới" để bắt đầu.
+          Chưa có hồ sơ học viên con nào. Hãy nhấp nút "Đăng ký học cho con" để bắt đầu.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -639,6 +659,7 @@ export default function ParentFamilyPage() {
                 <Button
                   onClick={() => {
                     setSelectedChildForQr(c)
+                    setStudentQrLoading(true)
                     setQrModalOpen(true)
                   }}
                   variant="outline"
@@ -712,13 +733,30 @@ export default function ParentFamilyPage() {
               <div className="bg-red-50/20 px-3 py-1 rounded-full text-xs font-bold text-red-600 border border-red-100/30">
                 {selectedChildForQr.fullName}
               </div>
-              <div className="bg-white border-2 border-gray-150 p-2 rounded-2xl shadow-sm">
+              <div className="bg-white border-2 border-gray-150 p-2 rounded-2xl shadow-sm relative w-48 h-48 flex items-center justify-center overflow-hidden">
+                {studentQrLoading && (
+                  <Loader2 className="w-8 h-8 animate-spin text-red-600 absolute" />
+                )}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedChildForQr.id)}`}
                   alt="QR Code"
-                  className="w-44 h-44 object-contain"
+                  className={`w-44 h-44 object-contain transition-opacity duration-300 ${studentQrLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setStudentQrLoading(false)}
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadQr(
+                  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(selectedChildForQr.id)}`,
+                  `QR_DiHoc_${selectedChildForQr.fullName.replace(/\s+/g, '_')}.png`
+                )}
+                className="text-xs font-semibold text-gray-600 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Tải xuống mã QR
+              </Button>
               <p className="text-[10px] text-gray-400 font-mono tracking-tight">{selectedChildForQr.id}</p>
             </div>
           )}
@@ -730,95 +768,9 @@ export default function ParentFamilyPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Add Child Dialog */}
-      <Dialog open={addChildOpen} onOpenChange={setAddChildOpen}>
-        <DialogContent className="max-w-md rounded-2xl border-gray-200">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-gray-850 select-none">Thêm Hồ Sơ Con Mới</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Tạo hồ sơ con của bạn dưới 15 tuổi. Các con không cần email/mật khẩu đăng nhập riêng.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAddChild} className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Họ và tên của con</label>
-              <input
-                type="text"
-                placeholder="Nguyễn Văn B"
-                value={newChildName}
-                onChange={e => setNewChildName(e.target.value)}
-                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 focus:border-red-500/30 transition-all"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Giới tính</label>
-                <Select
-                  value={newChildGender}
-                  onValueChange={(val: 'Nam' | 'Nữ') => setNewChildGender(val)}
-                >
-                  <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-gray-200 text-xs">
-                    <SelectItem value="Nam">Nam</SelectItem>
-                    <SelectItem value="Nữ">Nữ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Ngày sinh của con</label>
-                <input
-                  type="date"
-                  value={newChildDob}
-                  onChange={e => setNewChildDob(e.target.value)}
-                  className="w-full px-3.5 py-2 h-9 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Ghi chú thể trạng / Bệnh lý (nếu có)</label>
-              <textarea
-                rows={2}
-                placeholder="Bé bị cận thị, hen suyễn nhẹ..."
-                value={newChildNotes}
-                onChange={e => setNewChildNotes(e.target.value)}
-                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 resize-none"
-              />
-            </div>
-
-            <DialogFooter className="pt-2 gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setAddChildOpen(false)}
-                className="rounded-xl text-xs py-2 text-gray-500 font-semibold"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs py-2 px-4 font-bold flex items-center justify-center gap-1 transition-colors"
-              >
-                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Xác nhận thêm con
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Register Course Dialog */}
       <Dialog open={registerClassOpen} onOpenChange={setRegisterClassOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border-gray-200">
+        <DialogContent className="max-w-2xl w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-gray-200 p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-850 select-none">Đăng Ký Khóa Học Cho Con</DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -830,12 +782,13 @@ export default function ParentFamilyPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Select Child */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Chọn con đăng ký học</label>
+                <label className="text-xs font-medium text-gray-700">Chọn con đăng ký học <span className="text-red-500">*</span></label>
                 <Select value={selectedChildId} onValueChange={setSelectedChildId}>
                   <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
                     <SelectValue placeholder="Chọn con..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-gray-200 text-xs">
+                    <SelectItem value="new">+ Đăng ký cho con mới (Tạo hồ sơ mới)</SelectItem>
                     {children.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.fullName}</SelectItem>
                     ))}
@@ -856,10 +809,69 @@ export default function ParentFamilyPage() {
               </div>
             </div>
 
+            {/* New child form inputs */}
+            {selectedChildId === 'new' && (
+              <div className="p-4 bg-red-50/10 border border-dashed border-red-200/60 rounded-2xl space-y-3.5">
+                <h4 className="text-xs font-bold text-red-650 uppercase tracking-wide">Thông tin con mới</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Họ và tên của con <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Nguyễn Văn B"
+                      value={newChildName}
+                      onChange={e => setNewChildName(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 focus:border-red-500/30 transition-all"
+                      required={selectedChildId === 'new'}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-700">Giới tính</label>
+                      <Select
+                        value={newChildGender}
+                        onValueChange={(val: 'Nam' | 'Nữ') => setNewChildGender(val)}
+                      >
+                        <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-200 text-xs">
+                          <SelectItem value="Nam">Nam</SelectItem>
+                          <SelectItem value="Nữ">Nữ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-700">Ngày sinh <span className="text-red-500">*</span></label>
+                      <DatePicker
+                        value={newChildDob}
+                        onChange={setNewChildDob}
+                        className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20"
+                        placeholder="Chọn ngày sinh..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Ghi chú thể trạng / Bệnh lý (nếu có)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Bé bị cận thị, hen suyễn nhẹ..."
+                    value={newChildNotes}
+                    onChange={e => setNewChildNotes(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-red-500/20 resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Select Class */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Chọn lớp huấn luyện</label>
+                <label className="text-xs font-medium text-gray-700">Chọn lớp huấn luyện <span className="text-red-500">*</span></label>
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                   <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
                     <SelectValue placeholder="Chọn lớp..." />
@@ -874,7 +886,7 @@ export default function ParentFamilyPage() {
 
               {/* Select Package */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Chọn gói học / thẻ tập</label>
+                <label className="text-xs font-medium text-gray-700">Chọn gói học / thẻ tập <span className="text-red-500">*</span></label>
                 <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
                   <SelectTrigger className="w-full h-9 bg-gray-50 border-gray-200 text-xs rounded-xl focus:ring-1 focus:ring-red-500/20">
                     <SelectValue placeholder="Chọn gói..." />
@@ -889,6 +901,66 @@ export default function ParentFamilyPage() {
                 </Select>
               </div>
             </div>
+
+            {/* Combined Class & Package Summary Card */}
+            {(() => {
+              const selectedClass = classes.find(c => c.id === selectedClassId)
+              const selectedPackage = packages.find(p => p.id === selectedPackageId)
+              if (!selectedClass && !selectedPackage) return null
+
+              return (
+                <div className="overflow-hidden bg-gradient-to-b from-slate-50 to-white border border-slate-200 rounded-xl shadow-xs">
+                  <div className="px-4 py-2 bg-slate-100/50 border-b border-slate-150 flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Thông tin đăng ký & Học phí</span>
+                    <span className="bg-red-50 text-red-655 px-1.5 py-0.5 rounded border border-red-100">Xem trước</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {selectedClass && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            <GraduationCap className="w-3.5 h-3.5 text-red-500" />
+                            <span>Lớp học</span>
+                          </div>
+                          <h5 className="text-xs font-bold text-slate-800 leading-tight">{selectedClass.name}</h5>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Trình độ: {selectedClass.skill_level === 'beginner' ? 'Cơ bản' : selectedClass.skill_level === 'intermediate' ? 'Trung cấp' : selectedClass.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}</p>
+                        </div>
+                      )}
+                      {selectedPackage && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Gói học</span>
+                          </div>
+                          <h5 className="text-xs font-bold text-slate-800 leading-tight">{selectedPackage.name}</h5>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span className="bg-emerald-50 text-emerald-700 font-extrabold px-1.5 py-0.5 rounded border border-emerald-100 text-[9px] flex items-center gap-0.5 shadow-2xs">
+                              <Check className="w-3 h-3" />
+                              {selectedPackage.package_type === 'session' ? `${selectedPackage.sessions_count} buổi` : 'Gói tháng'}
+                            </span>
+                            <span className="bg-slate-100 text-slate-655 font-bold px-1.5 py-0.5 rounded border border-slate-200 text-[9px]">
+                              Hạn {selectedPackage.validity_days} ngày
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {selectedPackage && (
+                      <div className="pt-3 border-t border-slate-150 flex items-center justify-between bg-red-50/20 -mx-4 -mb-4 px-4 py-3 mt-1">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-450 uppercase tracking-wider block">Học phí cần đóng</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-black text-red-655 tracking-tight">
+                            {Number(selectedPackage.price).toLocaleString('vi-VN')} <span className="text-xs font-bold">VNĐ</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Photo upload */}
             <div className="space-y-2 border-t border-gray-100 pt-3">
@@ -996,6 +1068,23 @@ export default function ParentFamilyPage() {
                   )}
                 </div>
               </div>
+
+              {/* Health Guidance Warnings */}
+              {(q1 || q2 || q4 || q5 || q7 || q9 || q10) ? (
+                <div className="mt-4 p-3.5 bg-yellow-50 border border-yellow-200 rounded-xl flex gap-2 text-[11px] text-yellow-850 leading-relaxed font-semibold">
+                  <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-yellow-800 uppercase">Khuyến nghị Y tế:</span> Do con có dấu hiệu sức khỏe cần lưu ý, chúng tôi khuyến nghị phụ huynh nên tham khảo ý kiến bác sĩ trước khi cho con tập luyện cường độ cao. Đồng thời, vui lòng thông báo chi tiết tình trạng cho Huấn luyện viên vào buổi tập đầu tiên.
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 p-3.5 bg-green-50 border border-green-150 rounded-xl flex gap-2 text-[11px] text-green-850 leading-relaxed font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    Con có thể trạng bình thường và sẵn sàng tập luyện môn cầu lông. Hãy cùng HLV theo dõi và nâng dần cường độ tập.
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="pt-2 gap-2">
@@ -1050,8 +1139,26 @@ export default function ParentFamilyPage() {
             <div className="space-y-4 py-2 text-center">
               {/* QR Code */}
               <div className="relative w-52 h-52 mx-auto bg-white border border-gray-150 rounded-2xl overflow-hidden flex items-center justify-center p-2 shadow-sm select-none">
-                <img src={vietQrUrl} alt="VietQR Payment" className="max-w-full max-h-full object-contain" />
+                {paymentQrLoading && (
+                  <Loader2 className="w-8 h-8 animate-spin text-red-600 absolute" />
+                )}
+                <img
+                  src={vietQrUrl}
+                  alt="VietQR Payment"
+                  className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${paymentQrLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setPaymentQrLoading(false)}
+                />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadQr(vietQrUrl, `VietQR_ThanhToan_${paymentMemo}.png`)}
+                className="mt-1 text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 mx-auto py-1 px-3 rounded-lg shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Tải xuống mã QR
+              </Button>
 
               {/* Details */}
               <div className="text-left text-xs space-y-1.5 text-gray-600 bg-gray-50 p-4 rounded-2xl border border-gray-100/50">
@@ -1066,8 +1173,9 @@ export default function ParentFamilyPage() {
 
               <div className="p-3 bg-yellow-50/60 border border-yellow-100 rounded-xl text-left text-[10px] text-yellow-800 leading-normal flex gap-1.5">
                 <Info className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Lưu ý:</span> Quý phụ huynh vui lòng giữ đúng **nội dung chuyển khoản ({paymentMemo})** để hệ thống tự động nhận dạng thanh toán trong vòng 1 phút.
+                <div className="space-y-1">
+                  <p><span className="font-bold">Lưu ý quan trọng:</span> Quý phụ huynh vui lòng giữ đúng **nội dung chuyển khoản ({paymentMemo})** để hệ thống tự động nhận dạng thanh toán trong vòng 1 phút.</p>
+                  <p className="font-semibold text-red-700">Mỗi mã QR chỉ áp dụng cho duy nhất 1 lần thanh toán thẻ học hiện tại. Tuyệt đối KHÔNG lưu lại hoặc chuyển khoản vào mã QR cũ cho tháng mới/thẻ mới để hệ thống tự động ghi nhận chính xác.</p>
                 </div>
               </div>
 

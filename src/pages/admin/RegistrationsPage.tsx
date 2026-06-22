@@ -447,100 +447,222 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
           </div>
         ) : registrations.length === 0 ? (
           <div className="p-16 text-center">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <FileText className="w-12 h-12 text-gray-305 mx-auto mb-3" />
             <p className="text-gray-500 text-sm font-semibold">Chưa có đơn đăng ký nào</p>
             <p className="text-gray-400 text-xs mt-1">Các đơn đăng ký mới từ trang chủ sẽ hiển thị ở đây</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="w-[180px] font-semibold text-gray-700 text-xs">Học viên</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Lớp đăng ký</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Gói học & Học phí</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Liên hệ</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Thanh toán</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Tình trạng thể chất</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Ngày đăng ký</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-xs">Trạng thái</TableHead>
-                  <TableHead className="w-[140px] text-right font-semibold text-gray-700 text-xs">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {registrations.map(r => {
-                  const healthIssue = hasHealthIssue(r)
-                  return (
-                    <TableRow key={r.id} className="hover:bg-gray-55/40 transition-colors">
-                      <TableCell className="font-medium text-gray-900 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-semibold">
-                              {r.first_name.charAt(0).toUpperCase()}
+          <>
+            {/* Desktop Table Layout */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="w-[180px] font-semibold text-gray-700 text-xs">Học viên</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Lớp đăng ký</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Gói học & Học phí</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Liên hệ</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Thanh toán</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Tình trạng thể chất</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Ngày đăng ký</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs">Trạng thái</TableHead>
+                    <TableHead className="w-[140px] text-right font-semibold text-gray-700 text-xs">Hành động</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {registrations.map(r => {
+                    const healthIssue = hasHealthIssue(r)
+                    return (
+                      <TableRow key={r.id} className="hover:bg-gray-55/40 transition-colors">
+                        <TableCell className="font-medium text-gray-900 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-xs font-semibold">
+                                {r.first_name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{r.last_name} {r.first_name}</p>
+                              <p className="text-[10px] text-gray-500">{r.gender} · {formatDate(r.date_of_birth)}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <p className="font-semibold text-gray-800">{r.classes.name}</p>
+                          <p className="text-[10px] text-gray-500 font-medium">Trình độ: {r.classes.skill_level === 'beginner' ? 'Cơ bản' : r.classes.skill_level === 'intermediate' ? 'Trung cấp' : r.classes.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}</p>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.packages ? (
+                            <>
+                              <p className="font-semibold text-gray-800">{r.packages.name}</p>
+                              <p className="text-[10px] text-red-650 font-bold">{Number(r.packages.price).toLocaleString('vi-VN')} VNĐ</p>
+                            </>
+                          ) : (
+                            <p className="text-gray-400 italic">Chưa chọn gói</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs space-y-0.5 text-gray-650">
+                          <p className="flex items-center gap-1 font-semibold"><Phone className="w-3 h-3 text-gray-400" /> {r.mobile_phone}</p>
+                          <p className="flex items-center gap-1 text-[10px]"><Mail className="w-3 h-3 text-gray-400 text-white/50" /> {r.email}</p>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.payment_status === 'paid' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-150 text-green-700 border border-green-200">Đã thanh toán</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-650 border border-gray-200">Chưa thanh toán</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {healthIssue ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
+                              <ShieldAlert className="w-3 h-3" /> {getHealthSummary(r)}
                             </span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">{r.last_name} {r.first_name}</p>
-                            <p className="text-[10px] text-gray-500">{r.gender} · {formatDate(r.date_of_birth)}</p>
-                          </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                              <Heart className="w-3 h-3" /> Thể chất tốt
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500">{formatDate(r.created_at)}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-750">Chờ duyệt</span>}
+                          {r.status === 'approved' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-755">Đã phê duyệt</span>}
+                          {r.status === 'rejected' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-750">Đã từ chối</span>}
+                        </TableCell>
+                        <TableCell className="text-right py-3.5 space-x-1.5">
+                          <Button
+                            variant="ghost"
+                            className="h-8 text-[11px] font-bold px-2.5 text-gray-500 hover:bg-gray-100 rounded-lg"
+                            onClick={() => openDetail(r)}
+                          >
+                            Xem chi tiết
+                          </Button>
+                          {r.status === 'approved' && r.student_id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${r.student_id}`)}
+                              className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all inline-flex"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
+                            </Button>
+                          )}
+                          {r.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg"
+                                onClick={() => openApprove(r)}
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                onClick={() => setRejectDialog({ open: true, record: r })}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="flex md:hidden flex-col gap-3 p-4 bg-gray-50/50">
+              {registrations.map(r => {
+                const healthIssue = hasHealthIssue(r)
+                return (
+                  <div key={r.id} className="flex flex-col border border-gray-150/70 rounded-2xl p-4 gap-3 bg-white shadow-2xs relative">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-sm font-semibold">
+                            {r.first_name.charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <p className="font-semibold text-gray-800">{r.classes.name}</p>
-                        <p className="text-[10px] text-gray-500 font-medium">Trình độ: {r.classes.skill_level === 'beginner' ? 'Cơ bản' : r.classes.skill_level === 'intermediate' ? 'Trung cấp' : r.classes.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}</p>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {r.packages ? (
-                          <>
-                            <p className="font-semibold text-gray-800">{r.packages.name}</p>
-                            <p className="text-[10px] text-red-650 font-bold">{Number(r.packages.price).toLocaleString('vi-VN')} VNĐ</p>
-                          </>
-                        ) : (
-                          <p className="text-gray-400 italic">Chưa chọn gói</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs space-y-0.5 text-gray-650">
-                        <p className="flex items-center gap-1 font-semibold"><Phone className="w-3 h-3 text-gray-400" /> {r.mobile_phone}</p>
-                        <p className="flex items-center gap-1 text-[10px]"><Mail className="w-3 h-3 text-gray-400 text-white/50" /> {r.email}</p>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {r.payment_status === 'paid' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-150 text-green-700 border border-green-200">Đã thanh toán</span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-650 border border-gray-200">Chưa thanh toán</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {healthIssue ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
-                            <ShieldAlert className="w-3 h-3" /> {getHealthSummary(r)}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
-                            <Heart className="w-3 h-3" /> Thể chất tốt
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-gray-500">{formatDate(r.created_at)}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-700">Chờ duyệt</span>}
-                        {r.status === 'approved' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Đã phê duyệt</span>}
-                        {r.status === 'rejected' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Đã từ chối</span>}
-                      </TableCell>
-                      <TableCell className="text-right py-3.5 space-x-1.5">
-                        <Button
-                          variant="ghost"
-                          className="h-8 text-[11px] font-bold px-2.5 text-gray-500 hover:bg-gray-100 rounded-lg"
-                          onClick={() => openDetail(r)}
-                        >
-                          Xem chi tiết
-                        </Button>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 leading-tight">{r.last_name} {r.first_name}</h4>
+                          <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {r.gender} · {formatDate(r.date_of_birth)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Date Badge */}
+                      <span className="text-[10px] text-gray-400 font-semibold">{formatDate(r.created_at)}</span>
+                    </div>
+
+                    {/* Registration Details Block */}
+                    <div className="bg-gray-50/50 border border-gray-150/40 rounded-xl p-3 space-y-2 mt-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-400 font-bold text-[10px] uppercase">LỚP ĐĂNG KÝ</span>
+                        <span className="font-semibold text-gray-800">{r.classes.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-400 font-bold text-[10px] uppercase">GÓI HỌC</span>
+                        <span className="font-semibold text-gray-800">{r.packages ? r.packages.name : 'Chưa chọn gói'}</span>
+                      </div>
+                      {r.packages && (
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-400 font-bold text-[10px] uppercase">HỌC PHÍ</span>
+                          <span className="font-bold text-red-650">{Number(r.packages.price).toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-xs border-t border-gray-100 pt-2 mt-1">
+                        <span className="text-gray-400 font-bold text-[10px] uppercase">LIÊN HỆ</span>
+                        <span className="font-medium text-gray-700 flex items-center gap-1"><Phone className="w-3 h-3 text-gray-450" /> {r.mobile_phone}</span>
+                      </div>
+                    </div>
+
+                    {/* Status and Health Flags */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-dashed border-gray-100">
+                      {/* Status Badge */}
+                      {r.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-yellow-100 text-yellow-750">Chờ duyệt</span>}
+                      {r.status === 'approved' && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-755">Đã phê duyệt</span>}
+                      {r.status === 'rejected' && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-750">Đã từ chối</span>}
+
+                      {/* Payment Badge */}
+                      {r.payment_status === 'paid' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-150 text-green-700 border border-green-200">Đã thanh toán</span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-gray-100 text-gray-650 border border-gray-200">Chưa thanh toán</span>
+                      )}
+
+                      {/* Health Badge */}
+                      {healthIssue ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-yellow-50 text-yellow-750 border border-yellow-250/70">
+                          <ShieldAlert className="w-2.5 h-2.5" /> Thể trạng cần lưu ý
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-700 border border-green-200">
+                          <Heart className="w-2.5 h-2.5" /> Thể chất tốt
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 mt-1">
+                      <Button
+                        variant="outline"
+                        className="h-8 text-xs font-bold px-3 text-gray-600 rounded-xl"
+                        onClick={() => openDetail(r)}
+                      >
+                        Chi tiết
+                      </Button>
+                      
+                      <div className="flex items-center gap-2">
                         {r.status === 'approved' && r.student_id && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(`/admin/packages?tab=cards&assign_student_id=${r.student_id}`)}
-                            className="h-8 text-xs font-medium border-red-100 text-red-650 hover:bg-red-50 hover:border-red-200 gap-1 rounded-xl transition-all inline-flex"
+                            className="h-8 text-xs font-bold border-red-150 text-red-650 hover:bg-red-50 hover:border-red-250 gap-1 rounded-xl transition-all"
                           >
                             <CreditCard className="w-3.5 h-3.5" /> Cấp thẻ
                           </Button>
@@ -549,27 +671,27 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                           <>
                             <Button
                               variant="ghost"
-                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg"
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 border border-green-100 rounded-xl"
                               onClick={() => openApprove(r)}
                             >
                               <Check className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-xl"
                               onClick={() => setRejectDialog({ open: true, record: r })}
                             >
                               <X className="w-4 h-4" />
                             </Button>
                           </>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </div>
 

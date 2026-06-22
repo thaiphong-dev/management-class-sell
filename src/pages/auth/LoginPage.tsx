@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 
 const loginSchema = z.object({
   email:    z.string().email('Email không hợp lệ'),
@@ -28,7 +29,7 @@ export default function LoginPage() {
     const { error } = await signIn(data.email, data.password)
 
     if (error) {
-      setAuthError('Email hoặc mật khẩu không đúng. Vui lòng thử lại.')
+      setAuthError(getAuthErrorMessage(error))
       return
     }
 
@@ -151,14 +152,25 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-white/50">Bạn muốn đăng ký tập cho con? </span>
-          <button
-            onClick={() => navigate('/register')}
-            className="text-red-400 hover:text-red-300 font-semibold underline transition-colors"
-          >
-            Đăng ký tài khoản Phụ huynh
-          </button>
+        <div className="mt-6 text-center text-sm flex flex-col gap-2">
+          <div>
+            <span className="text-white/50">Bạn muốn đăng ký khóa học? </span>
+            <button
+              onClick={() => navigate('/register-course')}
+              className="text-red-400 hover:text-red-300 font-semibold underline transition-colors"
+            >
+              Đăng ký khóa học ngay
+            </button>
+          </div>
+          <div className="text-xs">
+            <span className="text-white/30">Hoặc phụ huynh </span>
+            <button
+              onClick={() => navigate('/register')}
+              className="text-red-400/80 hover:text-red-300 font-semibold underline transition-colors"
+            >
+              Đăng ký tài khoản Phụ huynh
+            </button>
+          </div>
         </div>
 
         <p className="text-center text-white/30 text-[10px] mt-6">

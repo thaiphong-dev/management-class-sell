@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { CreditCard, Calendar, Layers, AlertTriangle, CheckCircle2, ShoppingCart, Clock, Repeat2, Trash2, Check, Loader2, Info } from 'lucide-react'
+import { CreditCard, Calendar, Layers, AlertTriangle, CheckCircle2, ShoppingCart, Clock, Repeat2, Trash2, Check, Loader2, Info, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
@@ -52,6 +52,23 @@ const STATUS_CONFIG: Record<PackageHistory['status'], { label: string; className
   depleted:           { label: 'Hết buổi',       className: 'bg-gray-100 text-gray-600' },
 }
 
+const handleDownloadQr = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    window.open(url, '_blank')
+  }
+}
+
 export default function StudentPackagesPage({ studentId }: { studentId?: string } = {}) {
   const { profile } = useAuthContext()
   const { toast } = useToast()
@@ -71,6 +88,8 @@ export default function StudentPackagesPage({ studentId }: { studentId?: string 
     bank_bin: '970426',
     bank_branch: 'CN Hà Nội'
   })
+
+  const [qrLoading, setQrLoading] = useState(true)
 
   // Catalog Buying state
   const [activeClasses, setActiveClasses] = useState<any[]>([])
@@ -418,15 +437,38 @@ export default function StudentPackagesPage({ studentId }: { studentId?: string 
             {/* Right QR Column */}
             <div className="md:col-span-5 flex flex-col items-center justify-center bg-white p-3 rounded-2xl border border-amber-100 shadow-inner">
               <div className="w-40 h-40 flex items-center justify-center p-1.5 border border-gray-100 rounded-xl relative overflow-hidden bg-white">
+                {qrLoading && (
+                  <Loader2 className="w-6 h-6 animate-spin text-red-650 absolute" />
+                )}
                 <img
-                  src={`https://img.vietqr.io/image/${bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${unpaidRegistration.packages?.price || 0}&addInfo=TPB${unpaidRegistration.id.substring(0, 8)}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`}
+                  src={`https://img.vietqr.io/image/${bankDetails.bank_bin || bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${unpaidRegistration.packages?.price || 0}&addInfo=TPB${unpaidRegistration.id.substring(0, 8)}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`}
                   alt="VietQR Payment QR"
-                  className="max-w-full max-h-full object-contain"
+                  className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${qrLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setQrLoading(false)}
                 />
               </div>
-              <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[180px]">
-                Quét mã này bằng ứng dụng ngân hàng của bạn để thanh toán nhanh chóng.
-              </p>
+              
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadQr(
+                  `https://img.vietqr.io/image/${bankDetails.bank_bin || bankDetails.bank_id}-${bankDetails.bank_account}-compact2.png?amount=${unpaidRegistration.packages?.price || 0}&addInfo=TPB${unpaidRegistration.id.substring(0, 8)}&accountName=${encodeURIComponent(bankDetails.bank_account_name)}`,
+                  `VietQR_ThanhToan_TPB${unpaidRegistration.id.substring(0, 8)}.png`
+                )}
+                className="mt-2 text-[10px] font-bold text-gray-600 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1 py-1 px-2.5 h-auto rounded-lg shadow-sm"
+              >
+                <Download className="w-3 h-3" />
+                Tải xuống mã QR
+              </Button>
+
+              <div className="mt-3 p-3 bg-amber-50/50 border border-amber-100/60 rounded-xl text-[10px] text-amber-800 space-y-1 text-left max-w-[240px]">
+                <p className="font-semibold text-amber-900 flex items-center gap-1">
+                  <Info className="w-3 h-3 text-amber-600" /> Lưu ý thanh toán:
+                </p>
+                <p>• Giữ đúng nội dung chuyển khoản để hệ thống tự động nhận dạng thanh toán trong 1 phút.</p>
+                <p className="font-bold text-red-650">• Mỗi mã QR chỉ sử dụng cho 1 lần thanh toán này. Tuyệt đối KHÔNG chuyển tiền vào mã QR cũ cho các lần gia hạn/thẻ mới sau này.</p>
+              </div>
             </div>
           </div>
         </div>

@@ -42,8 +42,8 @@ export function useNotifications(): UseNotificationsReturn {
     }
 
     setNotifications((data ?? []) as Notification[])
-    setIsLoading(false)
-  }, [profile])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
 
   // Initial fetch
   useEffect(() => {
@@ -102,7 +102,8 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [profile])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
 
   const markAsRead = useCallback(async (id: string) => {
     const { error } = await supabase

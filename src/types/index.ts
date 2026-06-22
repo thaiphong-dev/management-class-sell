@@ -15,6 +15,8 @@ export type Facility          = Database['public']['Tables']['facilities']['Row'
 export type Court             = Database['public']['Tables']['courts']['Row']
 export type ClassStudent      = Database['public']['Tables']['class_students']['Row']
 export type ProgressEval      = Database['public']['Tables']['progress_evaluations']['Row']
+export type Assistant         = Database['public']['Tables']['assistants']['Row']
+export type CoachAssistantRegistration = Database['public']['Tables']['coach_assistant_registrations']['Row']
 
 // ─── Insert types ─────────────────────────────────────────────────────────────
 export type AttendanceInsert  = Database['public']['Tables']['attendance']['Insert']

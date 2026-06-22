@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import {
   ShieldAlert, Upload, CheckCircle2, AlertTriangle, ArrowLeft,
-  Loader2, User, Heart, FileText, Calendar, Info
+  Loader2, User, Heart, FileText, Calendar, Info, Check, GraduationCap, CreditCard,
+  Download
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -72,6 +73,23 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.
   })
 }
 
+const handleDownloadQr = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    window.open(url, '_blank')
+  }
+}
+
 export default function RegisterCoursePage() {
   const [searchParams] = useSearchParams()
   const classIdParam = searchParams.get('classId')
@@ -89,6 +107,7 @@ export default function RegisterCoursePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'failure'>('idle')
+  const [qrLoading, setQrLoading] = useState(true)
   const [failureReason, setFailureReason] = useState('')
   const [createdRegistrationId, setCreatedRegistrationId] = useState<string>('')
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
@@ -434,6 +453,7 @@ export default function RegisterCoursePage() {
       const insertedId = result.registration_id || ''
       setCreatedRegistrationId(insertedId)
       setPaymentConfirmed(false)
+      setQrLoading(true)
       setSubmitStatus('success')
       toast({ title: 'Gửi đăng ký thành công! Vui lòng thanh toán.' })
     } catch (err: any) {
@@ -456,7 +476,7 @@ export default function RegisterCoursePage() {
   }
 
   if (submitStatus === 'success') {
-    const BANK_ID = bankDetails.bank_id
+    const BANK_ID = bankDetails.bank_bin || bankDetails.bank_id
     const BANK_ACCOUNT = bankDetails.bank_account
     const BANK_ACCOUNT_NAME = bankDetails.bank_account_name
     const shortId = createdRegistrationId.substring(0, 8)
@@ -507,8 +527,27 @@ export default function RegisterCoursePage() {
                 <p className="font-bold text-gray-800 text-sm">Quét mã VietQR để thanh toán học phí</p>
                 
                 <div className="relative w-64 h-64 mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden flex items-center justify-center p-2 shadow-sm">
-                  <img src={vietQrUrl} alt="VietQR Payment" className="max-w-full max-h-full object-contain" />
+                  {qrLoading && (
+                    <Loader2 className="w-8 h-8 animate-spin text-red-600 absolute" />
+                  )}
+                  <img
+                    src={vietQrUrl}
+                    alt="VietQR Payment"
+                    className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${qrLoading ? 'opacity-0' : 'opacity-100'}`}
+                    onLoad={() => setQrLoading(false)}
+                  />
                 </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadQr(vietQrUrl, `VietQR_ThanhToan_${memo}.png`)}
+                  className="mt-1 text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-100 flex items-center justify-center gap-1.5 mx-auto py-1.5 px-3 rounded-lg shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Tải xuống mã QR
+                </Button>
 
                 <div className="text-left text-xs space-y-1.5 text-gray-650 border-t border-gray-200/60 pt-3">
                   <p><strong>Số tài khoản:</strong> <span className="text-gray-900 font-bold select-all">{BANK_ACCOUNT}</span> ({BANK_ID})</p>
@@ -537,8 +576,9 @@ export default function RegisterCoursePage() {
 
               <div className="p-3.5 bg-yellow-50/60 border border-yellow-100 rounded-xl text-left text-[11px] text-yellow-800 leading-relaxed flex gap-2">
                 <Info className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Lưu ý quan trọng:</span> Quý phụ huynh vui lòng giữ đúng **nội dung chuyển khoản ({memo})** để hệ thống tự động kích hoạt tài khoản trong vòng 1-2 phút sau khi nhận được tiền.
+                <div className="space-y-1">
+                  <p><span className="font-bold">Lưu ý quan trọng:</span> Quý phụ huynh vui lòng giữ đúng **nội dung chuyển khoản ({memo})** để hệ thống tự động kích hoạt tài khoản trong vòng 1-2 phút sau khi nhận được tiền.</p>
+                  <p className="font-semibold text-red-700">Mỗi mã QR chỉ dùng để thanh toán cho 1 lần đăng ký này. Tuyệt đối không lưu lại mã QR này để thanh toán cho lần gia hạn hoặc đăng ký sau để tránh lỗi nhận dạng của hệ thống.</p>
                 </div>
               </div>
 
@@ -689,39 +729,91 @@ export default function RegisterCoursePage() {
               </div>
 
               {(selectedClass || selectedPackage) && (
-                <div className="mt-3 p-4.5 bg-red-50/50 border border-red-100 rounded-2xl space-y-3">
-                  {selectedClass && (
-                    <div className="flex items-start gap-2 text-xs text-red-800">
-                      <Info className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="font-bold">Lớp đang chọn: {selectedClass.name}</p>
-                        <p>Sân tập: {selectedClass.facility_name || 'Đang cập nhật'} {selectedClass.court_name ? `(Sân ${selectedClass.court_name})` : ''}</p>
-                        <p>Giới hạn tối đa: {selectedClass.max_students} học viên</p>
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-6 overflow-hidden bg-gradient-to-b from-slate-50 to-white border border-slate-200 rounded-2xl shadow-sm">
+                  <div className="px-5 py-3 border-b border-slate-150 bg-slate-100/50 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Thông tin đăng ký & Học phí</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-650 border border-red-100">Xem trước</span>
+                  </div>
 
-                  {selectedPackage && (
-                    <div className="flex items-start gap-2 text-xs text-green-800 border-t border-red-200/40 pt-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-green-650 flex-shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="font-bold">Gói học đang chọn: {selectedPackage.name}</p>
-                        <p>Học phí: <span className="font-extrabold text-red-600 text-sm">{Number(selectedPackage.price).toLocaleString('vi-VN')} VNĐ</span></p>
-                        <p>Hạn sử dụng: {selectedPackage.validity_days} ngày từ khi kích hoạt</p>
-                        {selectedPackage.description && <p className="text-gray-500 italic text-[11px] mt-0.5">{selectedPackage.description}</p>}
-                      </div>
-                    </div>
-                  )}
+                  <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {selectedClass && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <GraduationCap className="w-4 h-4 text-red-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Lớp tập luyện</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-extrabold text-slate-800 leading-snug">{selectedClass.name}</h4>
+                            <div className="mt-1.5 space-y-1 text-xs text-slate-500">
+                              <p className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-400">Sân tập:</span> 
+                                <span className="text-slate-700 font-medium">{selectedClass.facility_name || 'Đang cập nhật'} {selectedClass.court_name ? `(Sân ${selectedClass.court_name})` : ''}</span>
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-400">Trình độ:</span> 
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-650 text-[10px] font-bold border border-slate-200">
+                                  {selectedClass.skill_level === 'beginner' ? 'Cơ bản' : selectedClass.skill_level === 'intermediate' ? 'Trung cấp' : selectedClass.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Note trình độ Trung cấp / Nâng cao */}
-                  {selectedClass && selectedClass.skill_level !== 'beginner' && (
-                    <div className="mt-2.5 p-3 bg-yellow-50 border border-yellow-250 rounded-xl flex gap-2 text-[11px] text-yellow-850 leading-relaxed">
-                      <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-extrabold uppercase text-yellow-800">Thông báo test trình độ:</span> Học sinh đăng ký lớp trình độ Trung cấp/Nâng cao sẽ được kiểm tra trình độ tại buổi học đầu tiên tại lớp. Nếu học viên không đáp ứng đủ trình độ, huấn luyện viên sẽ trao đổi trực tiếp với phụ huynh để chuyển học viên vào lớp học có trình độ phù hợp hơn.
-                      </div>
+                      {selectedPackage && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <CreditCard className="w-4 h-4 text-emerald-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Gói học đã chọn</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-extrabold text-slate-800 leading-snug">{selectedPackage.name}</h4>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <span className="bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded-lg border border-emerald-100 text-[10px] flex items-center gap-1 shadow-2xs">
+                                <Check className="w-3.5 h-3.5" />
+                                {selectedPackage.package_type === 'session' 
+                                  ? `${selectedPackage.sessions_count} buổi học` 
+                                  : 'Gói tháng (không giới hạn)'}
+                              </span>
+                              <span className="bg-slate-100 text-slate-655 font-bold px-2 py-0.5 rounded-lg border border-slate-200/80 text-[10px]">
+                                Hạn dùng: {selectedPackage.validity_days} ngày
+                              </span>
+                            </div>
+                            {selectedPackage.description && (
+                              <p className="text-slate-400 italic text-[10px] mt-2 font-medium">
+                                {selectedPackage.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {selectedClass && selectedClass.skill_level !== 'beginner' && (
+                      <div className="p-3 bg-yellow-50/50 border border-yellow-200 rounded-xl flex gap-2 text-[11px] text-yellow-850 leading-relaxed font-semibold">
+                        <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold uppercase text-yellow-800">Thông báo test trình độ:</span> Học sinh đăng ký lớp trình độ Trung cấp/Nâng cao sẽ được kiểm tra trình độ tại buổi học đầu tiên tại lớp. Nếu học viên không đáp ứng đủ trình độ, huấn luyện viên sẽ trao đổi trực tiếp với phụ huynh để chuyển học viên vào lớp học có trình độ phù hợp hơn.
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPackage && (
+                      <div className="pt-4 border-t border-slate-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-50/20 -mx-5 -mb-5 px-5 py-4 mt-2">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block mb-0.5">Tổng học phí thanh toán</span>
+                          <span className="text-[11px] text-slate-550">Kích hoạt ngay sau khi đối soát chuyển khoản.</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-black text-red-650 tracking-tight">
+                            {Number(selectedPackage.price).toLocaleString('vi-VN')} <span className="text-sm font-bold">VNĐ</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block mt-0.5">Đã bao gồm VAT & cơ sở vật chất</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

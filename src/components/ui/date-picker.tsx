@@ -220,7 +220,7 @@ export function DatePicker({
       />
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-72 bg-white rounded-2xl border border-gray-200 shadow-xl z-[999] p-4 font-sans select-none animate-in fade-in-50 zoom-in-95 duration-100 origin-top-left">
+        <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-gray-200 shadow-xl z-[999] p-4 font-sans select-none animate-in fade-in-50 zoom-in-95 duration-100 origin-top-right">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <button

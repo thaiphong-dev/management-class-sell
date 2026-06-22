@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar, CreditCard, TrendingUp, AlertTriangle,
-  CheckCircle2, XCircle, Clock, ChevronRight, QrCode
+  CheckCircle2, XCircle, Clock, ChevronRight, QrCode, Loader2, Download
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -69,6 +69,23 @@ const STATUS_LABEL = {
   excused: 'Phép',
 }
 
+const handleDownloadQr = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    window.open(url, '_blank')
+  }
+}
+
 export default function StudentDashboardPage() {
   const { profile } = useAuthContext()
   const navigate = useNavigate()
@@ -80,6 +97,7 @@ export default function StudentDashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [studentId, setStudentId] = useState<string | null>(null)
   const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [qrLoading, setQrLoading] = useState(true)
 
   useEffect(() => {
     if (!profile) return
@@ -239,7 +257,10 @@ export default function StudentDashboardPage() {
         </div>
         {studentId && (
           <Button
-            onClick={() => setQrModalOpen(true)}
+            onClick={() => {
+              setQrLoading(true)
+              setQrModalOpen(true)
+            }}
             className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl gap-2 flex items-center h-11 px-4 w-fit shadow-sm"
           >
             <QrCode className="w-4.5 h-4.5" /> Mã QR đi học
@@ -471,15 +492,36 @@ export default function StudentDashboardPage() {
             </DialogHeader>
 
             <div className="flex flex-col items-center justify-center py-6 space-y-4">
-              <div className="bg-white p-4 rounded-3xl border border-gray-150 shadow-inner flex items-center justify-center w-60 h-60">
+              <div className="bg-white p-4 rounded-3xl border border-gray-150 shadow-inner flex items-center justify-center w-60 h-60 relative overflow-hidden">
+                {qrLoading && (
+                  <Loader2 className="w-8 h-8 animate-spin text-red-650 absolute" />
+                )}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
                     window.location.origin + '/coach/attendance/scan?studentId=' + studentId
                   )}`}
                   alt="Mã QR đi học"
-                  className="w-full h-full object-contain"
+                  className={`w-full h-full object-contain transition-opacity duration-300 ${qrLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setQrLoading(false)}
                 />
               </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadQr(
+                  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                    window.location.origin + '/coach/attendance/scan?studentId=' + studentId
+                  )}`,
+                  `QR_DiHoc_${profile?.full_name?.replace(/\s+/g, '_') || 'HocVien'}.png`
+                )}
+                className="text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Tải xuống mã QR
+              </Button>
+
               <div className="text-center">
                 <p className="text-sm font-extrabold text-gray-900">{profile?.full_name}</p>
                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Học viên Thái Phong Badminton Class</p>

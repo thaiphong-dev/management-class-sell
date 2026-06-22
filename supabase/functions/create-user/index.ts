@@ -11,7 +11,7 @@ interface CreateUserPayload {
   password: string
   full_name: string
   phone?: string
-  role: 'admin' | 'coach' | 'student'
+  role: 'admin' | 'coach' | 'student' | 'assistant'
   // Coach-specific
   specialty?: string
   experience_years?: number
@@ -19,6 +19,12 @@ interface CreateUserPayload {
   // Student-specific
   skill_level?: 'beginner' | 'intermediate' | 'advanced'
   dob?: string
+  // Assistant-specific
+  school_university?: string
+  major?: string
+  year_of_study?: string
+  skills?: string
+  certifications?: string[]
 }
 
 const corsHeaders = {
@@ -135,6 +141,17 @@ Deno.serve(async (req) => {
       dob: payload.dob ?? null,
     }, { onConflict: 'user_id' })
     if (studentError) console.error('Student record error:', studentError.message)
+  } else if (payload.role === 'assistant') {
+    const { error: assistantError } = await supabaseAdmin.from('assistants').upsert({
+      user_id: userId,
+      school_university: payload.school_university ?? null,
+      major: payload.major ?? null,
+      year_of_study: payload.year_of_study ?? null,
+      skills: payload.skills ?? null,
+      bio: payload.bio ?? null,
+      certifications: payload.certifications ?? null,
+    }, { onConflict: 'user_id' })
+    if (assistantError) console.error('Assistant record error:', assistantError.message)
   }
 
   return new Response(

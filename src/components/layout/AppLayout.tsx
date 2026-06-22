@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { MobileBottomBar } from './MobileBottomBar'
 import { useAuthContext } from '@/contexts/AuthContext'
 
 export function AppLayout() {
@@ -30,11 +31,12 @@ export function AppLayout() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         <Header />
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-5">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-5 pb-24 lg:pb-5">
           <Outlet />
         </main>
+        <MobileBottomBar />
       </div>
     </div>
   )

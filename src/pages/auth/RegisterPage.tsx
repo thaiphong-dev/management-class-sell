@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Họ và tên tối thiểu 2 ký tự'),
@@ -70,7 +71,7 @@ export default function RegisterPage() {
       }
     } catch (err: any) {
       console.error('Registration failed:', err)
-      setAuthError(err.message || 'Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.')
+      setAuthError(getAuthErrorMessage(err))
     }
   }
 

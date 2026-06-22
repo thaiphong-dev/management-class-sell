@@ -12,6 +12,7 @@ import AdminClassesPage    from '@/pages/admin/ClassesPage'
 import AdminPackagesPage   from '@/pages/admin/PackagesPage'
 import AdminReportsPage    from '@/pages/admin/ReportsPage'
 import AdminRegistrationsPage from '@/pages/admin/RegistrationsPage'
+import AdminStaffRegistrationsPage from '@/pages/admin/StaffRegistrationsPage'
 // Coach pages
 import CoachDashboardPage       from '@/pages/coach/DashboardPage'
 import CoachClassesPage         from '@/pages/coach/ClassesPage'
@@ -42,6 +43,8 @@ import RegisterPage        from '@/pages/auth/RegisterPage'
 import LandingPage from '@/pages/public/LandingPage'
 import AdminSettingsPage from '@/pages/admin/SettingsPage'
 import RegisterCoursePage from '@/pages/public/RegisterCoursePage'
+import RegisterCoachPage from '@/pages/public/RegisterCoachPage'
+import RegisterAssistantPage from '@/pages/public/RegisterAssistantPage'
 import SharedLessonPage from '@/pages/public/SharedLessonPage'
 import NotFoundPage from '@/pages/public/NotFoundPage'
 
@@ -101,6 +104,18 @@ export default function App() {
             }
           />
           <Route
+            path="/register-coach"
+            element={
+              <RegisterCoachPage />
+            }
+          />
+          <Route
+            path="/register-assistant"
+            element={
+              <RegisterAssistantPage />
+            }
+          />
+          <Route
             path="/shared/lessons/:id"
             element={
               <SharedLessonPage />
@@ -117,6 +132,7 @@ export default function App() {
               <Route path="classes"       element={<AdminClassesPage />} />
               <Route path="packages"      element={<AdminPackagesPage />} />
               <Route path="registrations" element={<AdminRegistrationsPage />} />
+              <Route path="staff-registrations" element={<AdminStaffRegistrationsPage />} />
               <Route path="reports"       element={<AdminReportsPage />} />
               <Route path="settings"   element={<AdminSettingsPage />} />
             </Route>

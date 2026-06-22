@@ -673,6 +673,12 @@ export default function LandingPage() {
             reserved.
           </p>
           <div className="flex gap-4">
+            <Link to="/register-coach" className="hover:text-white transition-colors">
+              Đăng ký Coach
+            </Link>
+            <Link to="/register-assistant" className="hover:text-white transition-colors">
+              Đăng ký Trợ giảng
+            </Link>
             <Link to="/login" className="hover:text-white transition-colors">
               Đăng nhập Quản trị
             </Link>
