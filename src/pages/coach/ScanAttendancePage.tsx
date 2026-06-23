@@ -34,6 +34,7 @@ interface ActivePackage {
 
 interface SessionOption {
   id: string
+  classId: string | null
   className: string
   scheduledAt: string
   coachName: string | null
@@ -67,6 +68,7 @@ export default function CoachScanAttendancePage() {
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'late' | 'excused' | 'absent'>('present')
   const [notes, setNotes] = useState('')
+  const [studentClasses, setStudentClasses] = useState<string[]>([])
 
   // Search/List states (when studentId is not provided)
   const [searchQuery, setSearchQuery] = useState('')
@@ -128,13 +130,24 @@ export default function CoachScanAttendancePage() {
             })
           }
 
-          // 3. Fetch active sessions in last 3 days and next 3 days
+          // 3. Fetch active class IDs and names for this student
+          const { data: studentClassesData } = await supabase
+            .from('class_students')
+            .select('class_id, classes(name)')
+            .eq('student_id', studentIdParam)
+            .eq('status', 'active')
+          
+          const enrolledClassIds = ((studentClassesData ?? []) as any[]).map(sc => sc.class_id)
+          const classNames = ((studentClassesData ?? []) as any[]).map(sc => sc.classes?.name || '').filter(Boolean)
+          setStudentClasses(classNames)
+
+          // 4. Fetch active sessions in last 3 days and next 3 days
           const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
           const threeDaysAhead = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
 
           const { data: sessionsData, error: sessionsError } = await supabase
             .from('sessions_with_details')
-            .select('id, class_name, scheduled_at, coach_name, facility_name, court_name')
+            .select('id, class_id, class_name, scheduled_at, coach_name, facility_name, court_name')
             .neq('status', 'cancelled')
             .gte('scheduled_at', threeDaysAgo)
             .lte('scheduled_at', threeDaysAhead)
@@ -144,6 +157,7 @@ export default function CoachScanAttendancePage() {
 
           const options: SessionOption[] = (sessionsData ?? []).map((s: any) => ({
             id: s.id,
+            classId: s.class_id,
             className: s.class_name,
             scheduledAt: s.scheduled_at,
             coachName: s.coach_name,
@@ -153,10 +167,15 @@ export default function CoachScanAttendancePage() {
 
           setSessions(options)
           
-          // Select the first session by default if available
-          if (options.length > 0) {
-            setSelectedSessionId(options[0].id)
+          // Select student's enrolled class session by default if available, otherwise empty to force manual selection
+          let defaultSessionId = ''
+          if (options.length > 0 && enrolledClassIds.length > 0) {
+            const matchingSession = options.find(o => o.classId && enrolledClassIds.includes(o.classId))
+            if (matchingSession) {
+              defaultSessionId = matchingSession.id
+            }
           }
+          setSelectedSessionId(defaultSessionId)
 
         } else {
           // ── Case B: studentId is not provided, load all students list ─────
@@ -267,6 +286,15 @@ export default function CoachScanAttendancePage() {
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
                   Trình độ: {student.skillLevel === 'beginner' ? 'Cơ bản' : student.skillLevel === 'intermediate' ? 'Trung cấp' : student.skillLevel === 'advanced' ? 'Nâng cao' : 'Khác'}
                 </p>
+                {studentClasses.length > 0 ? (
+                  <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider mt-1 bg-red-50 border border-red-100 rounded-lg px-2.5 py-0.5 inline-block">
+                    Lớp chính thức: {studentClasses.join(", ")}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1 bg-gray-50 border border-gray-150 rounded-lg px-2.5 py-0.5 inline-block">
+                    Lớp chính thức: Chưa xếp lớp
+                  </p>
+                )}
               </div>
               {student.phone && (
                 <div className="pt-3 border-t border-gray-100 text-xs text-gray-550 flex items-center justify-center gap-1.5 font-semibold">
@@ -334,13 +362,24 @@ export default function CoachScanAttendancePage() {
                 {/* Select Session */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-700">Chọn buổi học tập luyện <span className="text-red-500">*</span></label>
+                  
+                  {!selectedSessionId && studentClasses.length > 0 && !sessions.some(s => studentClasses.includes(s.className)) && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex gap-2 items-start leading-relaxed animate-in fade-in duration-300">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        Không tìm thấy buổi học nào cho lớp chính thức của học viên (<span className="font-bold text-amber-950">{studentClasses.join(", ")}</span>) trong khoảng thời gian này.
+                        <p className="mt-1 text-[11px] text-amber-700 font-semibold">Vui lòng chọn một buổi học của lớp khác dưới đây nếu học viên này đi học bù.</p>
+                      </div>
+                    </div>
+                  )}
+
                   {sessions.length === 0 ? (
                     <div className="p-3 bg-red-50 text-red-800 text-xs font-semibold rounded-xl">
                       Không tìm thấy buổi học nào hoạt động trong thời gian này. HLV cần tạo buổi học trước.
                     </div>
                   ) : (
                     <Select
-                      value={selectedSessionId}
+                      value={selectedSessionId || undefined}
                       onValueChange={(val) => setSelectedSessionId(val)}
                     >
                       <SelectTrigger className="w-full bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold h-11 focus:ring-2 focus:ring-red-500/50">
@@ -421,7 +460,7 @@ export default function CoachScanAttendancePage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || sessions.length === 0}
+                    disabled={isSubmitting || sessions.length === 0 || !selectedSessionId}
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-5 text-xs font-extrabold gap-1.5 shadow-sm"
                   >
                     {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

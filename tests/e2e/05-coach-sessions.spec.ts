@@ -223,6 +223,7 @@ async function createTestSession(page: Page) {
 
   await page.getByRole('dialog').locator('input[type="date"]').fill(dateStr)
   await page.getByRole('dialog').locator('input[type="time"]').fill('10:00')
+  await page.getByRole('dialog').locator('textarea').fill('E2E test session')
 
   await page.getByRole('dialog').getByRole('button', { name: 'Tạo buổi học' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 8_000 })

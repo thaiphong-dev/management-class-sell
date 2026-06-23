@@ -208,6 +208,15 @@ async function cleanup() {
     .or('notes.ilike.%e2e%,notes.ilike.%test%,notes.ilike.%tc1%');
   if (errDeleteSessions) console.error("Error deleting sessions:", errDeleteSessions.message);
 
+  // 11b. Delete test lesson plans (title contains 'E2E' or 'test')
+  console.log("Deleting test lesson plans...");
+  const { error: errDeleteLessonPlans } = await supabase
+    .from('lesson_plans')
+    .delete()
+    .or('title.ilike.%e2e%,title.ilike.%test%');
+  if (errDeleteLessonPlans) console.error("Error deleting lesson plans:", errDeleteLessonPlans.message);
+
+
   // 12. Delete test students
   if (testStudentIds.length > 0) {
     console.log("Deleting test student records...");

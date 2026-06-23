@@ -33,6 +33,18 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; cl
   cancelled:   { label: 'Đã hủy',      icon: XCircle,        className: 'bg-red-100 text-red-700' },
 }
 
+const DAYS_VN = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+const DAY_VALUES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+const DAY_INDEXES: Record<number, string> = {
+  0: 'sun',
+  1: 'mon',
+  2: 'tue',
+  3: 'wed',
+  4: 'thu',
+  5: 'fri',
+  6: 'sat'
+}
+
 export default function CoachSessionsPage() {
   const { classId } = useParams<{ classId: string }>()
   const { profile } = useAuthContext()
@@ -61,6 +73,13 @@ export default function CoachSessionsPage() {
     open: false, session: null,
   })
   const [cancelReason, setCancelReason] = useState('')
+
+  const [autoDialog, setAutoDialog] = useState(false)
+  const [autoForm, setAutoForm] = useState({
+    rangeType: '30' as '7' | '14' | '30' | '60' | '90',
+    startDate: new Date().toISOString().split('T')[0],
+    court_id: '',
+  })
 
   async function loadData() {
     if (!classId || !profile) return
@@ -184,6 +203,80 @@ export default function CoachSessionsPage() {
       await loadData()
     }
     setSaving(false)
+  }
+
+  function getCandidateDates(startDateStr: string, rangeDays: number, scheduleDays: string[], scheduleTime: string) {
+    if (!scheduleDays || scheduleDays.length === 0 || !scheduleTime) return []
+    const candidates: Date[] = []
+    const start = new Date(startDateStr)
+    for (let i = 0; i < rangeDays; i++) {
+      const current = new Date(start.getTime() + i * 24 * 60 * 60 * 1000)
+      const dayName = DAY_INDEXES[current.getDay()]
+      if (scheduleDays.includes(dayName)) {
+        const datePart = current.toISOString().split('T')[0]
+        const dateTimeLocal = new Date(`${datePart}T${scheduleTime}`)
+        candidates.push(dateTimeLocal)
+      }
+    }
+    return candidates
+  }
+
+  async function handleAutoGenerate() {
+    if (!classId || !classInfo || !classInfo.schedule_days || !classInfo.schedule_time) {
+      toast({ title: 'Không thể tạo lịch', description: 'Lớp học chưa cấu hình ngày/giờ học.', variant: 'destructive' })
+      return
+    }
+    setSaving(true)
+    try {
+      const rangeDays = parseInt(autoForm.rangeType)
+      const candidates = getCandidateDates(autoForm.startDate, rangeDays, classInfo.schedule_days, classInfo.schedule_time)
+      
+      if (candidates.length === 0) {
+        toast({ title: 'Không có buổi học nào', description: 'Không tìm thấy ngày học phù hợp với lịch của lớp trong khoảng thời gian đã chọn.' })
+        setSaving(false)
+        return
+      }
+
+      const { data: existingSessions, error: fetchError } = await (supabase.from('sessions') as any)
+        .select('scheduled_at')
+        .eq('class_id', classId)
+        .neq('status', 'cancelled')
+
+      if (fetchError) throw fetchError
+
+      const existingTimes = new Set((existingSessions ?? []).map((s: any) => new Date(s.scheduled_at).getTime()))
+      
+      const newSessionsToInsert = candidates
+        .filter(c => !existingTimes.has(c.getTime()))
+        .map(c => ({
+          class_id: classId,
+          scheduled_at: c.toISOString(),
+          duration_min: classInfo.duration_min ?? 90,
+          court_id: autoForm.court_id || null,
+          notes: 'Tạo tự động theo lịch lớp',
+          created_by: profile?.id ?? null,
+          status: 'scheduled'
+        }))
+
+      if (newSessionsToInsert.length === 0) {
+        toast({ title: 'Không có buổi học mới', description: 'Tất cả các buổi học trong khoảng thời gian này đã được tạo trước đó.' })
+        setAutoDialog(false)
+        setSaving(false)
+        return
+      }
+
+      const { error: insertError } = await (supabase.from('sessions') as any).insert(newSessionsToInsert)
+      if (insertError) throw insertError
+
+      toast({ title: 'Đã tạo lịch học tự động', description: `Đã thêm thành công ${newSessionsToInsert.length} buổi học mới.` })
+      setAutoDialog(false)
+      await loadData()
+    } catch (err: any) {
+      console.error('Auto generate sessions error:', err.message)
+      toast({ title: 'Lỗi tạo lịch tự động', description: err.message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -318,12 +411,36 @@ export default function CoachSessionsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Danh sách buổi học</p>
         </div>
         {profile?.role === 'coach' && (
-          <Button
-            onClick={() => setCreateDialog(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
-          >
-            <Plus className="w-4 h-4" /> Thêm buổi
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                if (!classInfo?.schedule_days?.length || !classInfo?.schedule_time) {
+                  toast({
+                    title: 'Lớp học chưa cấu hình lịch',
+                    description: 'HLV hoặc Admin cần thiết lập ngày và giờ học cho lớp này trước.',
+                    variant: 'destructive'
+                  })
+                  return
+                }
+                setAutoForm(prev => ({
+                  ...prev,
+                  court_id: classInfo.court_id ?? '',
+                  startDate: new Date().toISOString().split('T')[0]
+                }))
+                setAutoDialog(true)
+              }}
+              variant="outline"
+              className="border border-gray-300 text-gray-750 hover:bg-gray-50 gap-2 rounded-xl text-xs font-semibold h-10 px-4"
+            >
+              <CalendarClock className="w-4 h-4 text-gray-500" /> Tạo lịch tự động
+            </Button>
+            <Button
+              onClick={() => setCreateDialog(true)}
+              className="bg-primary-600 hover:bg-primary-700 text-white gap-2 rounded-xl text-xs font-semibold h-10 px-4"
+            >
+              <Plus className="w-4 h-4" /> Thêm buổi
+            </Button>
+          </div>
         )}
       </div>
 
@@ -352,6 +469,95 @@ export default function CoachSessionsPage() {
           )}
         </>
       )}
+
+      {/* Auto Generate Sessions Dialog */}
+      <Dialog open={autoDialog} onOpenChange={open => !open && setAutoDialog(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tự động tạo lịch học</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label htmlFor="rangeType" className="text-xs font-bold text-gray-700">Thời khoảng tự động tạo</Label>
+              <Select
+                value={autoForm.rangeType}
+                onValueChange={(val: any) => setAutoForm(prev => ({ ...prev, rangeType: val }))}
+              >
+                <SelectTrigger id="rangeType" className="w-full bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold h-11">
+                  <SelectValue placeholder="Chọn thời khoảng" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">1 tuần tới</SelectItem>
+                  <SelectItem value="14">2 tuần tới</SelectItem>
+                  <SelectItem value="30">1 tháng tới (30 ngày)</SelectItem>
+                  <SelectItem value="60">2 tháng tới (60 ngày)</SelectItem>
+                  <SelectItem value="90">3 tháng tới (90 ngày)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-gray-700">Ngày bắt đầu tạo</Label>
+              <DatePicker
+                value={autoForm.startDate}
+                onChange={(val) => setAutoForm(prev => ({ ...prev, startDate: val }))}
+                placeholder="Chọn ngày bắt đầu"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="auto_court_id" className="text-xs font-bold text-gray-700">Chọn sân tập luyện</Label>
+              <Select
+                value={autoForm.court_id || 'none'}
+                onValueChange={(val) => setAutoForm(prev => ({ ...prev, court_id: val === 'none' ? '' : val }))}
+              >
+                <SelectTrigger id="auto_court_id" className="w-full bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold h-11">
+                  <SelectValue placeholder="Chọn sân cầu lông" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Chưa chọn</SelectItem>
+                  {courts.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Preview of schedule details */}
+            {classInfo?.schedule_days && classInfo?.schedule_time && (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl text-[11px] text-gray-600 space-y-1">
+                <p><strong>Lịch lớp:</strong> {classInfo.schedule_days.map(d => DAYS_VN[DAY_VALUES.indexOf(d)]).join(', ')} vào lúc {classInfo.schedule_time.slice(0, 5)}</p>
+                <p>
+                  <strong>Số buổi ước tính:</strong>{' '}
+                  <span className="font-bold text-primary-600">
+                    {getCandidateDates(autoForm.startDate, parseInt(autoForm.rangeType), classInfo.schedule_days, classInfo.schedule_time).length} buổi
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl text-xs font-semibold"
+              onClick={() => setAutoDialog(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              disabled={saving}
+              className="flex-1 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs h-10"
+              onClick={handleAutoGenerate}
+            >
+              {saving ? 'Đang tạo...' : 'Xác nhận tạo'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Session Dialog */}
       <Dialog open={createDialog} onOpenChange={open => !open && setCreateDialog(false)}>
