@@ -168,11 +168,22 @@ export default function CoachScanAttendancePage() {
           setSessions(options)
           
           // Select student's enrolled class session by default if available, otherwise empty to force manual selection
+          // We select the matching session closest to the current time (now).
           let defaultSessionId = ''
           if (options.length > 0 && enrolledClassIds.length > 0) {
-            const matchingSession = options.find(o => o.classId && enrolledClassIds.includes(o.classId))
-            if (matchingSession) {
-              defaultSessionId = matchingSession.id
+            const matchingSessions = options.filter(o => o.classId && enrolledClassIds.includes(o.classId))
+            if (matchingSessions.length > 0) {
+              const nowTime = Date.now()
+              let closestSession = matchingSessions[0]
+              let minDiff = Math.abs(new Date(closestSession.scheduledAt).getTime() - nowTime)
+              for (let i = 1; i < matchingSessions.length; i++) {
+                const diff = Math.abs(new Date(matchingSessions[i].scheduledAt).getTime() - nowTime)
+                if (diff < minDiff) {
+                  minDiff = diff
+                  closestSession = matchingSessions[i]
+                }
+              }
+              defaultSessionId = closestSession.id
             }
           }
           setSelectedSessionId(defaultSessionId)
