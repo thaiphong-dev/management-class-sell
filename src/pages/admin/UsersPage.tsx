@@ -365,10 +365,14 @@ export default function UsersPage() {
             <div key={user.id}>
               {/* Desktop & Tablet Row Layout */}
               <div className="hidden md:flex items-center gap-3 py-3 px-1 hover:bg-gray-55 rounded-xl transition-colors">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm font-semibold">
-                    {user.full_name.charAt(0).toUpperCase()}
-                  </span>
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white text-sm font-semibold">
+                      {user.full_name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -463,10 +467,14 @@ export default function UsersPage() {
               <div className="flex md:hidden flex-col border border-gray-150/70 rounded-2xl p-4 gap-3 bg-white shadow-2xs relative">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-semibold">
-                        {user.full_name.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white text-sm font-semibold">
+                          {user.full_name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -743,6 +751,18 @@ export default function UsersPage() {
             <DialogTitle>Chỉnh sửa thông tin</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Avatar display */}
+            <div className="flex flex-col items-center justify-center pb-2">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-sm">
+                {editDialog.user?.avatar_url ? (
+                  <img src={editDialog.user.avatar_url} alt={editForm.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white text-xl font-bold">
+                    {editForm.full_name.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
+              </div>
+            </div>
             <div>
               <Label>Họ và tên *</Label>
               <Input className="mt-1 rounded-xl" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} />

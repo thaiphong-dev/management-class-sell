@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from '@/components/ui/dialog'
 
 interface ClassDetail {
   id: string
@@ -107,6 +110,7 @@ export default function RegisterCoursePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'failure'>('idle')
+  const [conflictStatus, setConflictStatus] = useState<'idle' | 'pending_registration' | 'existing_user'>('idle')
   const [qrLoading, setQrLoading] = useState(true)
   const [failureReason, setFailureReason] = useState('')
   const [createdRegistrationId, setCreatedRegistrationId] = useState<string>('')
@@ -447,7 +451,17 @@ export default function RegisterCoursePage() {
 
       const result = await res.json()
       if (!res.ok || !result.success) {
-        throw new Error(result.error || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.')
+        if (result.error === 'EMAIL_EXISTS_WITH_PENDING_REGISTRATION') {
+          setConflictStatus('pending_registration')
+          setIsSubmitting(false)
+          return
+        }
+        if (result.error === 'EMAIL_EXISTS_NO_PENDING_REGISTRATION') {
+          setConflictStatus('existing_user')
+          setIsSubmitting(false)
+          return
+        }
+        throw new Error(result.message || result.error || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.')
       }
 
       const insertedId = result.registration_id || ''
@@ -1255,6 +1269,49 @@ export default function RegisterCoursePage() {
           </form>
         </div>
       </div>
+
+      {/* Dialog thông báo tài khoản/đơn đăng ký đã tồn tại */}
+      <Dialog open={conflictStatus !== 'idle'} onOpenChange={() => setConflictStatus('idle')}>
+        <DialogContent className="max-w-md rounded-2xl p-6 bg-white border border-gray-100 shadow-xl font-sans">
+          <DialogHeader className="flex flex-col items-center text-center space-y-3">
+            <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 animate-pulse">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-gray-900 leading-normal">
+              {conflictStatus === 'pending_registration' ? 'Đơn đăng ký đang chờ duyệt' : 'Tài khoản đã tồn tại'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 leading-relaxed pt-1 select-none">
+              {conflictStatus === 'pending_registration' ? (
+                <>
+                  Email <strong className="text-gray-800 font-semibold">{email.trim()}</strong> đã được đăng ký tài khoản trước đó và hiện đang có một đơn đăng ký học ở trạng thái <span className="font-bold text-amber-600">chờ duyệt</span>. Bạn không thể tạo thêm đơn đăng ký mới lúc này.
+                </>
+              ) : (
+                <>
+                  Email <strong className="text-gray-800 font-semibold">{email.trim()}</strong> đã được đăng ký tài khoản trong hệ thống. Vui lòng đăng nhập để đăng ký khóa học hoặc mua thẻ học trực tiếp từ tài khoản của bạn.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConflictStatus('idle')}
+              className="w-full sm:w-auto border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl"
+            >
+              Đóng
+            </Button>
+            <Button
+              type="button"
+              onClick={() => navigate(`/login?email=${encodeURIComponent(email.trim())}`)}
+              className="w-full sm:w-auto bg-red-650 hover:bg-red-750 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5"
+            >
+              Đăng nhập ngay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

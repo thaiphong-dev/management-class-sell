@@ -198,7 +198,19 @@ export default function AdminRegistrationsPage() {
       if (studentId) {
         console.log('Phê duyệt đăng ký đã có tài khoản sẵn:', studentId)
         
-        // 1. Update the existing pending payment to 'paid' (if payment_id is present)
+        // 1. Enroll student in class if not already enrolled
+        const { error: enrollError } = await (supabase
+          .from('class_students') as any)
+          .upsert({
+            class_id: record.class_id,
+            student_id: studentId,
+            status: 'active'
+          }, { onConflict: 'class_id, student_id' })
+        
+        if (enrollError) console.error('Enroll error for existing student:', enrollError.message)
+
+        // 2. Update the existing pending payment to 'paid' (if payment_id is present)
+        let updatedPayment = false
         if (record.payment_id) {
           const { error: paymentError } = await (supabase
             .from('payments') as any)
@@ -207,7 +219,11 @@ export default function AdminRegistrationsPage() {
               notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
             })
             .eq('id', record.payment_id)
-          if (paymentError) console.error('Payment update error:', paymentError.message)
+          if (paymentError) {
+            console.error('Payment update error:', paymentError.message)
+          } else {
+            updatedPayment = true
+          }
         } else {
           // Fallback: look for pending payment
           const { data: unpaidPayment } = await (supabase
@@ -220,20 +236,65 @@ export default function AdminRegistrationsPage() {
             .maybeSingle()
             
           if (unpaidPayment) {
-            await (supabase
+            const { error: paymentUpdateErr } = await (supabase
               .from('payments') as any)
               .update({
                 status: 'paid',
                 notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
               })
               .eq('id', unpaidPayment.id)
+            if (paymentUpdateErr) {
+              console.error('Payment update error (fallback):', paymentUpdateErr.message)
+            } else {
+              updatedPayment = true
+            }
           }
         }
 
-        // 2. Update registration record
+        // 3. Grant package if not already granted (i.e., if student_package_id is null on the registration but package_id is selected)
+        let studentPackageId = record.student_package_id
+        if (!studentPackageId && record.package_id && record.packages) {
+          const { data: pkgInsert, error: pkgError } = await (supabase
+            .from('student_packages') as any)
+            .insert({
+              student_id: studentId,
+              package_id: record.package_id,
+              sessions_total: record.packages.sessions_count,
+              sessions_remaining: record.packages.sessions_count,
+              status: 'pending_activation',
+              notes: 'Cấp thủ công qua phê duyệt đơn đăng ký.'
+            })
+            .select('id')
+            .single()
+
+          if (pkgError) {
+            console.error('Package grant error:', pkgError.message)
+          } else {
+            studentPackageId = pkgInsert?.id
+            
+            // If payment was not updated, insert a new paid payment
+            if (!updatedPayment) {
+              const { error: paymentError } = await (supabase
+                .from('payments') as any)
+                .insert({
+                  student_id: studentId,
+                  student_package_id: studentPackageId,
+                  amount: record.packages.price,
+                  payment_method: 'transfer',
+                  status: 'paid',
+                  notes: 'Thanh toán ghi nhận qua phê duyệt đơn đăng ký thủ công.'
+                })
+              if (paymentError) console.error('Payment record error:', paymentError.message)
+            }
+          }
+        }
+
+        // 4. Update registration record
         const { error: regUpdateError } = await (supabase
           .from('registrations') as any)
           .update({
+            student_id: studentId,
+            student_package_id: studentPackageId || undefined,
             payment_status: 'paid',
             status: 'approved'
           })
@@ -869,18 +930,25 @@ ${record.q10_disability ? `- Chi tiết khuyết tật: ${record.q10_disability_
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Mật khẩu tạm thời cấp cho học viên:</label>
-                <Input
-                  type="text"
-                  value={tempPassword}
-                  onChange={(e) => setTempPassword(e.target.value)}
-                  className="rounded-xl text-xs font-semibold"
-                  placeholder="Student@123"
-                  required
-                />
-                <p className="text-[10px] text-gray-400">Gửi thông tin tài khoản và mật khẩu này cho phụ huynh để họ đăng nhập hệ thống.</p>
-              </div>
+              {!approveDialog.record.student_id ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Mật khẩu tạm thời cấp cho học viên:</label>
+                  <Input
+                    type="text"
+                    value={tempPassword}
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    className="rounded-xl text-xs font-semibold"
+                    placeholder="Student@123"
+                    required
+                  />
+                  <p className="text-[10px] text-gray-400">Gửi thông tin tài khoản và mật khẩu này cho phụ huynh để họ đăng nhập hệ thống.</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-blue-800 text-[11px] leading-relaxed">
+                  <strong>Thông báo:</strong> Tài khoản học viên đã được tạo trước đó cùng đơn đăng ký học.
+                  Nhấn <strong>Xác nhận phê duyệt</strong> bên dưới để duyệt đơn đăng ký học và ghi nhận thanh toán.
+                </div>
+              )}
             </div>
           )}
 

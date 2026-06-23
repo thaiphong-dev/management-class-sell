@@ -80,7 +80,52 @@ Deno.serve(async (req) => {
     }
     
     if (authUserId) {
-      console.log('User auth already exists, reusing account:', authUserId)
+      console.log('User auth already exists, checking for pending registrations:', authUserId)
+      
+      // Get student_id associated with this authUserId
+      const { data: studentData, error: studentError } = await supabaseAdmin
+        .from('students')
+        .select('id')
+        .eq('user_id', authUserId)
+        .maybeSingle()
+        
+      if (studentError) {
+        throw new Error(`Failed to query student record: ${studentError.message}`)
+      }
+      
+      if (studentData) {
+        // Check if there is any pending registration for this student
+        const { data: pendingReg, error: regError } = await supabaseAdmin
+          .from('registrations')
+          .select('id')
+          .eq('student_id', studentData.id)
+          .eq('status', 'pending')
+          .maybeSingle()
+          
+        if (regError) {
+          throw new Error(`Failed to check pending registrations: ${regError.message}`)
+        }
+        
+        if (pendingReg) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'EMAIL_EXISTS_WITH_PENDING_REGISTRATION', 
+              message: 'Email này đã được đăng ký tài khoản trước đó và hiện đang có đơn đăng ký chờ duyệt. Vui lòng hủy đơn đăng ký cũ trước khi tạo đơn đăng ký mới.' 
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'EMAIL_EXISTS_NO_PENDING_REGISTRATION', 
+          message: 'Email này đã được đăng ký tài khoản trước đó. Vui lòng đăng nhập để đăng ký học.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     } else {
       console.log('Creating new auth user for student...')
       const { data: newUserData, error: createError } = await supabaseAdmin.auth.admin.createUser({

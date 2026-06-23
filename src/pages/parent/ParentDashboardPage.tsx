@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { Clock, MapPin, Users, CreditCard, Calendar, ClipboardList, TrendingUp } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Clock, MapPin, Users, CreditCard, Calendar, ClipboardList, TrendingUp, AlertTriangle, Loader2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/stores/useAppStore'
+import { Button } from '@/components/ui/button'
 
 interface ChildInfo {
   id: string; // studentId
@@ -33,6 +34,7 @@ interface ChildPackageSummary {
   sessionsTotal: number | null
   expiresAt: string | null
   status: string | null
+  alertLevel: string | null
 }
 
 const CHILD_COLORS = [
@@ -57,11 +59,45 @@ function groupByDate(sessions: ScheduleSession[]): Map<string, ScheduleSession[]
 export default function ParentDashboardPage() {
   const { profile } = useAuthContext()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const { setActiveChildId } = useAppStore()
   const [sessions, setSessions] = useState<ScheduleSession[]>([])
   const [childPackages, setChildPackages] = useState<ChildPackageSummary[]>([])
   const [children, setChildren] = useState<ChildInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Pending registrations states
+  const [pendingRegistrations, setPendingRegistrations] = useState<any[]>([])
+  const [isCancelling, setIsCancelling] = useState<string | null>(null)
+
+  const handleCancelRegistration = async (regId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn đăng ký học này cho con không?')) return
+    setIsCancelling(regId)
+    try {
+      const { error } = await (supabase.rpc as any)('cancel_pending_registration', {
+        p_registration_id: regId
+      })
+
+      if (error) throw error
+
+      toast({
+        title: 'Hủy đăng ký thành công',
+        description: 'Đơn đăng ký học đã được hủy bỏ.'
+      })
+      
+      setPendingRegistrations(prev => prev.filter(r => r.id !== regId))
+      window.location.reload()
+    } catch (err: any) {
+      console.error('Error cancelling registration:', err.message)
+      toast({
+        title: 'Lỗi hủy đăng ký',
+        description: err.message || 'Lỗi không xác định',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsCancelling(null)
+    }
+  }
 
   useEffect(() => {
     if (!profile) return
@@ -105,6 +141,20 @@ export default function ParentDashboardPage() {
 
         const childIds = childList.map(c => c.id)
 
+        // Fetch pending registrations for these children
+        const { data: pendingRegsData, error: pendingError } = await (supabase
+          .from('registrations') as any)
+          .select('id, student_id, first_name, last_name, class_name:classes(name), package_name:packages(name), packages(price)')
+          .in('student_id', childIds)
+          .eq('status', 'pending')
+          .eq('payment_status', 'unpaid')
+
+        if (pendingError) {
+          console.error('Failed to load pending registrations:', pendingError.message)
+        } else {
+          setPendingRegistrations(pendingRegsData || [])
+        }
+
         // 3. Get all active classes for these children
         const { data: classStudentsData, error: classStudentsError } = await (supabase
           .from('class_students') as any)
@@ -131,19 +181,28 @@ export default function ParentDashboardPage() {
         // 4. Get active student packages for summary
         const { data: packagesData } = await (supabase
           .from('active_student_packages') as any)
-          .select('student_id, package_name, sessions_remaining, sessions_total, expires_at, status')
+          .select('student_id, package_name, sessions_remaining, sessions_total, expires_at, status, alert_level')
           .in('student_id', childIds)
+
+        // Get pending packages
+        const { data: pendingPackagesData } = await (supabase
+          .from('student_packages') as any)
+          .select('student_id, status, sessions_total, sessions_remaining, packages(name)')
+          .in('student_id', childIds)
+          .eq('status', 'pending_activation')
 
         const summaries: ChildPackageSummary[] = childList.map(c => {
           const pkg = (packagesData || []).find((p: any) => p.student_id === c.id)
+          const pendingPkg = (pendingPackagesData || []).find((p: any) => p.student_id === c.id)
           return {
             childId: c.id,
             childName: c.fullName,
-            packageName: pkg?.package_name || null,
-            sessionsRemaining: pkg?.sessions_remaining || null,
-            sessionsTotal: pkg?.sessions_total || null,
+            packageName: pkg?.package_name || (pendingPkg?.packages?.name ?? null),
+            sessionsRemaining: pkg?.sessions_remaining || (pendingPkg?.sessions_remaining ?? null),
+            sessionsTotal: pkg?.sessions_total || (pendingPkg?.sessions_total ?? null),
             expiresAt: pkg?.expires_at || null,
-            status: pkg?.status || null
+            status: pkg?.status || pendingPkg?.status || null,
+            alertLevel: pkg?.alert_level || (pendingPkg ? 'pending_activation' : null)
           }
         })
         setChildPackages(summaries)
@@ -198,6 +257,8 @@ export default function ParentDashboardPage() {
     )
   }
 
+  const alertChildren = childPackages.filter(cp => cp.alertLevel === 'warning' || cp.alertLevel === 'critical' || cp.alertLevel === 'pending_activation' || !cp.packageName)
+
   return (
     <div className="space-y-8">
       {/* Welcome header */}
@@ -205,6 +266,112 @@ export default function ParentDashboardPage() {
         <h2 className="text-xl font-bold text-gray-900">Xin chào, Phụ huynh {profile?.full_name}</h2>
         <p className="text-sm text-gray-500 mt-0.5">Chào mừng quay lại hệ thống quản lý học viên Thái Phong Badminton Class.</p>
       </div>
+
+      {/* Đơn đăng ký học chờ duyệt/thanh toán */}
+      {!isLoading && pendingRegistrations.length > 0 && (
+        <div className="space-y-3 font-sans">
+          {pendingRegistrations.map(reg => (
+            <div key={reg.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-4.5 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0 animate-pulse">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-850">
+                    Đơn đăng ký học của bé {reg.last_name} {reg.first_name} đang chờ thanh toán
+                  </h4>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-normal font-medium">
+                    Đăng ký lớp: <span className="font-bold text-amber-900">{reg.class_name?.name || '—'}</span> · Gói học: <span className="font-bold text-amber-900">{reg.package_name?.name || '—'}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 font-sans">
+                <Button 
+                  onClick={() => {
+                    setActiveChildId(reg.student_id)
+                    navigate('/parent/packages')
+                  }}
+                  className="bg-amber-650 hover:bg-amber-750 text-white rounded-xl text-xs font-bold px-4 h-9 shadow-sm"
+                >
+                  Thanh toán ngay
+                </Button>
+                <Button 
+                  onClick={() => handleCancelRegistration(reg.id)}
+                  disabled={isCancelling === reg.id}
+                  variant="outline"
+                  className="border-gray-200 text-gray-500 hover:text-red-655 hover:bg-red-55/60 rounded-xl text-xs font-bold px-4 h-9"
+                >
+                  {isCancelling === reg.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Hủy đăng ký'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cảnh báo trạng thái thẻ học của các con */}
+      {!isLoading && children.length > 0 && alertChildren.length > 0 && (
+        <div className="space-y-3">
+          {alertChildren.map(cp => {
+            const isCritical = cp.alertLevel === 'critical';
+            const isWarning = cp.alertLevel === 'warning';
+            const isPendingActivation = cp.alertLevel === 'pending_activation';
+            
+            let bgClass = "bg-amber-50 border-amber-200 text-amber-850"
+            let iconBg = "bg-amber-100 text-amber-600"
+            let title = `Bé ${cp.childName} chưa có thẻ học`
+            let desc = `Tài khoản của bé ${cp.childName} hiện chưa có thẻ học nào đang hoạt động. Vui lòng đăng ký gói học mới để kích hoạt và ghi nhận lịch tập luyện.`
+            let btnText = "Đăng ký gói học"
+            let btnClass = "bg-amber-600 hover:bg-amber-700 border-amber-600"
+            
+            if (isPendingActivation) {
+              bgClass = "bg-amber-50 border-amber-200 text-amber-850"
+              iconBg = "bg-amber-100 text-amber-600 animate-pulse"
+              title = `Bé ${cp.childName} có thẻ học chờ kích hoạt`
+              desc = `Gói học ${cp.packageName} của bé ${cp.childName} đang chờ kích hoạt. Thẻ sẽ tự động kích hoạt khi điểm danh lần đầu hoặc kích hoạt bằng tay.`
+              btnText = "Xem chi tiết"
+              btnClass = "bg-amber-600 hover:bg-amber-700 border-amber-600"
+            } else if (isCritical) {
+              bgClass = "bg-red-50 border-red-200 text-red-850"
+              iconBg = "bg-red-100 text-red-655"
+              title = `Thẻ học của bé ${cp.childName} đã hết hạn/hết buổi`
+              desc = `Thẻ học của bé ${cp.childName} đã hết số buổi tập hoặc quá hạn sử dụng. Hãy mua gói học mới ngay hôm nay để tránh bị chặn điểm danh.`
+              btnText = "Gia hạn ngay"
+              btnClass = "bg-red-600 hover:bg-red-700 border-red-600"
+            } else if (isWarning) {
+              bgClass = "bg-orange-50 border-orange-200 text-orange-850"
+              iconBg = "bg-orange-100 text-orange-600"
+              title = `Thẻ học của bé ${cp.childName} sắp hết`
+              desc = `Thẻ học của bé ${cp.childName} sắp hết hạn sử dụng hoặc còn ít buổi tập. Vui lòng đăng ký gói học sớm.`
+              btnText = "Gia hạn sớm"
+              btnClass = "bg-orange-600 hover:bg-orange-700 border-orange-600"
+            }
+
+            return (
+              <div key={cp.childId} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-2xl p-4.5 shadow-xs ${bgClass}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold leading-snug">{title}</h4>
+                    <p className="text-xs opacity-90 mt-0.5 leading-normal">{desc}</p>
+                  </div>
+                </div>
+                <Link
+                  to="/parent/packages"
+                  onClick={() => setActiveChildId(cp.childId)}
+                  className="shrink-0"
+                >
+                  <Button className={`text-white rounded-xl text-xs font-bold w-full sm:w-auto px-4 h-9.5 shadow-sm border ${btnClass}`}>
+                    {btnText}
+                  </Button>
+                </Link>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {children.length === 0 ? (
         <div className="bg-white border border-gray-100 rounded-3xl p-8 text-center space-y-4 shadow-sm max-w-md mx-auto">

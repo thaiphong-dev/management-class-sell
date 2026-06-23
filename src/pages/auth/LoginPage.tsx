@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,11 +17,18 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const { signIn } = useAuthContext()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [authError, setAuthError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
+  const defaultEmail = searchParams.get('email') || ''
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: defaultEmail,
+      password: '',
+    }
   })
 
   const onSubmit = async (data: LoginFormData) => {
