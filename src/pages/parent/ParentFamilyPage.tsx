@@ -150,6 +150,153 @@ export default function ParentFamilyPage() {
     }
   }, [qrModalOpen, selectedChildForQr])
 
+  const [selectedChildClasses, setSelectedChildClasses] = useState<string[]>([])
+
+  useEffect(() => {
+    if (qrModalOpen && selectedChildForQr) {
+      const fetchChildClasses = async () => {
+        const { data } = await supabase
+          .from('class_students')
+          .select('classes(name)')
+          .eq('student_id', selectedChildForQr.id)
+          .eq('status', 'active')
+        
+        const names = ((data ?? []) as any[]).map(c => c.classes?.name || '').filter(Boolean)
+        setSelectedChildClasses(names)
+      }
+      fetchChildClasses()
+    } else {
+      setSelectedChildClasses([])
+    }
+  }, [qrModalOpen, selectedChildForQr])
+
+  const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    fill: boolean,
+    stroke: boolean,
+    strokeColor: string = "#e5e7eb"
+  ) => {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    if (fill) {
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  };
+
+  const handleDownloadChildQrCard = () => {
+    if (!studentQrCodeDataUrl || !selectedChildForQr) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 450;
+    canvas.height = 600;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // 1. Fill background with clean white
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Draw card border/shadow outline
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.06)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 4;
+    drawRoundedRect(ctx, 15, 15, 420, 570, 24, true, true, "#f3f4f6");
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0; // reset shadow completely
+
+    // 3. Draw top red accent band
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    drawRoundedRect(ctx, 15, 15, 420, 10, 8, true, false);
+    ctx.fillRect(15, 20, 420, 5); // smooth bridge
+
+    // 4. Logo/Brand text
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#dc2626";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText("THÁI PHONG BADMINTON CLASS", canvas.width / 2, 55);
+
+    // 5. Title
+    ctx.fillStyle = "#991b1b";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText("MÃ QR ĐI HỌC CỦA BÉ", canvas.width / 2, 85);
+
+    // 6. Subtitle instructions
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("Đưa mã này cho huấn luyện viên quét để điểm danh khi đến lớp", canvas.width / 2, 108);
+
+    // 7. QR Code Container box
+    ctx.fillStyle = "#f9fafb";
+    drawRoundedRect(ctx, 115, 135, 220, 220, 20, true, true, "#e5e7eb");
+
+    // 8. Draw QR code image onto canvas
+    const img = new Image();
+    img.src = studentQrCodeDataUrl;
+    img.onload = () => {
+      ctx.drawImage(img, 125, 145, 200, 200);
+
+      // 9. Student Name
+      ctx.fillStyle = "#111827";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText(selectedChildForQr.fullName || "HỌC VIÊN", canvas.width / 2, 395);
+
+      // 10. Sub-label
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "bold 9px sans-serif";
+      ctx.fillText("HỌC VIÊN CHÍNH THỨC", canvas.width / 2, 415);
+
+      // 11. Class Name Badge
+      const className = selectedChildClasses.length > 0 ? selectedChildClasses.join(", ") : "Chưa xếp lớp";
+      ctx.fillStyle = "#fef2f2";
+      drawRoundedRect(ctx, 45, 440, 360, 42, 12, true, true, "#fee2e2");
+      ctx.fillStyle = "#991b1b";
+      ctx.font = "bold 13px sans-serif";
+      ctx.fillText(`Lớp học: ${className}`, canvas.width / 2, 466);
+
+      // 12. Footer quotes
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "italic 11px sans-serif";
+      ctx.fillText("Đam mê dẫn lối thành công", canvas.width / 2, 530);
+
+      // 13. Brand url
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "bold 9px sans-serif";
+      ctx.fillText("THAIPHONGBADMINTON.COM", canvas.width / 2, 555);
+
+      // 14. Convert to base64 Data URL and trigger download
+      const finalUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = finalUrl;
+      link.download = `QR_DiHoc_${selectedChildForQr.fullName.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+  };
+
   // Add child form states
   const [newChildName, setNewChildName] = useState('')
   const [newChildGender, setNewChildGender] = useState<'Nam' | 'Nữ'>('Nam')
@@ -844,8 +991,19 @@ export default function ParentFamilyPage() {
 
           {selectedChildForQr && (
             <div className="flex flex-col items-center gap-4 py-4 select-none">
-              <div className="bg-red-50/20 px-3 py-1 rounded-full text-xs font-bold text-red-600 border border-red-100/30">
-                {selectedChildForQr.fullName}
+              <div className="text-center space-y-1">
+                <div className="bg-red-50/20 px-3 py-1 rounded-full text-xs font-bold text-red-600 border border-red-100/30 inline-block">
+                  {selectedChildForQr.fullName}
+                </div>
+                {selectedChildClasses.length > 0 ? (
+                  <p className="text-xs text-red-650 font-bold bg-red-50/50 border border-red-100 rounded-lg px-2.5 py-1 mt-2">
+                    Lớp: {selectedChildClasses.join(", ")}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1 mt-2">
+                    Lớp: Chưa xếp lớp
+                  </p>
+                )}
               </div>
               <div className="bg-white border-2 border-gray-150 p-2 rounded-2xl shadow-sm relative w-48 h-48 flex items-center justify-center overflow-hidden">
                 {studentQrLoading && (
@@ -863,16 +1021,7 @@ export default function ParentFamilyPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  if (studentQrCodeDataUrl) {
-                    const link = document.createElement("a");
-                    link.href = studentQrCodeDataUrl;
-                    link.download = `QR_DiHoc_${selectedChildForQr.fullName.replace(/\s+/g, '_')}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }
-                }}
+                onClick={handleDownloadChildQrCard}
                 className="text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg"
               >
                 <Download className="w-3.5 h-3.5" />
