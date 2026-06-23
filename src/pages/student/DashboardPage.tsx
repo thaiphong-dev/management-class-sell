@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
 import {
   Calendar,
   CreditCard,
@@ -84,23 +85,6 @@ const STATUS_LABEL = {
   excused: "Phép",
 };
 
-const handleDownloadQr = async (url: string, filename: string) => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    window.open(url, "_blank");
-  }
-};
-
 export default function StudentDashboardPage() {
   const { profile } = useAuthContext();
   const navigate = useNavigate();
@@ -119,6 +103,23 @@ export default function StudentDashboardPage() {
   const [studentId, setStudentId] = useState<string | null>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrLoading, setQrLoading] = useState(true);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (qrModalOpen && studentId) {
+      setQrLoading(true);
+      const data = `${window.location.origin}/coach/attendance/scan?studentId=${studentId}`;
+      QRCode.toDataURL(data, { width: 300, margin: 2 })
+        .then((url) => {
+          setQrCodeDataUrl(url);
+          setQrLoading(false);
+        })
+        .catch((err) => {
+          console.error("Failed to generate QR code", err);
+          setQrLoading(false);
+        });
+    }
+  }, [qrModalOpen, studentId]);
 
   // Pending course/package registration states
   const [pendingRegistration, setPendingRegistration] = useState<any | null>(
@@ -882,34 +883,31 @@ export default function StudentDashboardPage() {
             <div className="flex flex-col items-center justify-center py-6 space-y-4">
               <div className="bg-white p-4 rounded-3xl border border-gray-150 shadow-inner flex items-center justify-center w-60 h-60 relative overflow-hidden">
                 {qrLoading && (
-                  <Loader2 className="w-8 h-8 animate-spin text-red-650 absolute" />
+                  <Loader2 className="w-8 h-8 animate-spin text-red-655 absolute" />
                 )}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                    window.location.origin +
-                      "/coach/attendance/scan?studentId=" +
-                      studentId,
-                  )}`}
-                  alt="Mã QR đi học"
-                  className={`w-full h-full object-contain transition-opacity duration-300 ${qrLoading ? "opacity-0" : "opacity-100"}`}
-                  onLoad={() => setQrLoading(false)}
-                />
+                {qrCodeDataUrl && (
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="Mã QR đi học"
+                    className={`w-full h-full object-contain transition-opacity duration-300 ${qrLoading ? "opacity-0" : "opacity-100"}`}
+                  />
+                )}
               </div>
 
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  handleDownloadQr(
-                    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-                      window.location.origin +
-                        "/coach/attendance/scan?studentId=" +
-                        studentId,
-                    )}`,
-                    `QR_DiHoc_${profile?.full_name?.replace(/\s+/g, "_") || "HocVien"}.png`,
-                  )
-                }
+                onClick={() => {
+                  if (qrCodeDataUrl) {
+                    const link = document.createElement("a");
+                    link.href = qrCodeDataUrl;
+                    link.download = `QR_DiHoc_${profile?.full_name?.replace(/\s+/g, "_") || "HocVien"}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
                 className="text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg shadow-sm"
               >
                 <Download className="w-3.5 h-3.5" />

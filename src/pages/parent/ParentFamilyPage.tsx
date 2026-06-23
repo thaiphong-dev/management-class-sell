@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import QRCode from 'qrcode'
 import { useAppStore } from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase'
 import { useAuthContext } from '@/contexts/AuthContext'
@@ -131,6 +132,23 @@ export default function ParentFamilyPage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [paymentQrLoading, setPaymentQrLoading] = useState(true)
   const [studentQrLoading, setStudentQrLoading] = useState(true)
+  const [studentQrCodeDataUrl, setStudentQrCodeDataUrl] = useState<string>("")
+
+  useEffect(() => {
+    if (qrModalOpen && selectedChildForQr) {
+      setStudentQrLoading(true)
+      const data = `${window.location.origin}/coach/attendance/scan?studentId=${selectedChildForQr.id}`
+      QRCode.toDataURL(data, { width: 300, margin: 2 })
+        .then((url) => {
+          setStudentQrCodeDataUrl(url)
+          setStudentQrLoading(false)
+        })
+        .catch((err) => {
+          console.error("Failed to generate QR code", err)
+          setStudentQrLoading(false)
+        })
+    }
+  }, [qrModalOpen, selectedChildForQr])
 
   // Add child form states
   const [newChildName, setNewChildName] = useState('')
@@ -833,22 +851,29 @@ export default function ParentFamilyPage() {
                 {studentQrLoading && (
                   <Loader2 className="w-8 h-8 animate-spin text-red-600 absolute" />
                 )}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedChildForQr.id)}`}
-                  alt="QR Code"
-                  className={`w-44 h-44 object-contain transition-opacity duration-300 ${studentQrLoading ? 'opacity-0' : 'opacity-100'}`}
-                  onLoad={() => setStudentQrLoading(false)}
-                />
+                {studentQrCodeDataUrl && (
+                  <img
+                    src={studentQrCodeDataUrl}
+                    alt="QR Code"
+                    className={`w-44 h-44 object-contain transition-opacity duration-300 ${studentQrLoading ? 'opacity-0' : 'opacity-100'}`}
+                  />
+                )}
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleDownloadQr(
-                  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(selectedChildForQr.id)}`,
-                  `QR_DiHoc_${selectedChildForQr.fullName.replace(/\s+/g, '_')}.png`
-                )}
-                className="text-xs font-semibold text-gray-600 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg"
+                onClick={() => {
+                  if (studentQrCodeDataUrl) {
+                    const link = document.createElement("a");
+                    link.href = studentQrCodeDataUrl;
+                    link.download = `QR_DiHoc_${selectedChildForQr.fullName.replace(/\s+/g, '_')}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+                className="text-xs font-semibold text-gray-650 border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg"
               >
                 <Download className="w-3.5 h-3.5" />
                 Tải xuống mã QR
