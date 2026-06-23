@@ -160,49 +160,7 @@ export default function StudentDashboardPage() {
     }
   };
 
-  const handleActivateCard = async (
-    pkgId: string,
-    validityDays: number = 30,
-  ) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn kích hoạt thẻ học này ngay bây giờ?",
-      )
-    )
-      return;
-    setIsLoading(true);
-    try {
-      const now = new Date();
-      const expiresAt = new Date(
-        now.getTime() + validityDays * 24 * 60 * 60 * 1000,
-      ).toISOString();
 
-      const { error } = await supabase
-        .from("student_packages")
-        .update({
-          status: "active",
-          activated_at: now.toISOString(),
-          expires_at: expiresAt,
-        } as never)
-        .eq("id", pkgId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Kích hoạt thành công",
-        description: "Thẻ học của bạn đã được kích hoạt thành công.",
-      });
-      window.location.reload();
-    } catch (err: any) {
-      toast({
-        title: "Lỗi kích hoạt",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!profile) return;
@@ -494,21 +452,10 @@ export default function StudentDashboardPage() {
                           {pendingActivationCard.packages?.name || "Gói học"}
                         </strong>{" "}
                         đang chờ kích hoạt. Thẻ sẽ tự động kích hoạt khi bạn
-                        điểm danh buổi đầu tiên hoặc có thể kích hoạt tay.
+                        điểm danh buổi đầu tiên hoặc liên hệ Admin để kích hoạt.
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() =>
-                      handleActivateCard(
-                        pendingActivationCard.id,
-                        pendingActivationCard.packages?.validity_days || 30,
-                      )
-                    }
-                    className="bg-amber-650 hover:bg-amber-750 text-white rounded-xl text-xs font-bold w-full sm:w-auto px-4 h-9.5 shrink-0 shadow-sm border border-amber-600 font-sans"
-                  >
-                    Kích hoạt thẻ ngay
-                  </Button>
                 </div>
               );
             }

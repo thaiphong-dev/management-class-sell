@@ -131,41 +131,103 @@ export default function CoachAttendancePage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {sessions.map(s => {
-              const statusCfg = STATUS_LABELS[s.status] ?? STATUS_LABELS.scheduled
-              const hasTaken = s.attendanceCount > 0
-              return (
-                <div key={s.id} className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
-                  <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
-                    <ClipboardList className="w-4 h-4 text-primary-700" />
+            {/* Mobile View: Card Layout */}
+            <div className="block sm:hidden divide-y divide-gray-100">
+              {sessions.map(s => {
+                const statusCfg = STATUS_LABELS[s.status] ?? STATUS_LABELS.scheduled
+                const hasTaken = s.attendanceCount > 0
+                return (
+                  <div key={s.id} className="p-4 space-y-3 hover:bg-gray-50/50 transition-colors">
+                    {/* Top: Name + Status */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-8.5 h-8.5 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0 mt-0.5 animate-pulse-subtle">
+                          <ClipboardList className="w-4.5 h-4.5 text-primary-700" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-gray-900 leading-snug break-words">
+                            {s.className}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatDateTime(s.scheduled_at)} · {s.duration_min} phút
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${statusCfg.className}`}>
+                        {statusCfg.label}
+                      </span>
+                    </div>
+
+                    {/* Bottom: Attendance Status + Button */}
+                    <div className="flex items-center justify-between pt-1 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {hasTaken ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-700 font-bold bg-green-50 px-2 py-1 rounded-lg">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            {s.attendanceCount} HV đã điểm danh
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 font-medium bg-gray-100/80 px-2 py-1 rounded-lg">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                            Chưa điểm danh
+                          </span>
+                        )}
+                      </div>
+
+                      {s.status !== 'cancelled' && (
+                        <button
+                          onClick={() => navigate(`/coach/classes/${s.class_id}/sessions/${s.id}/attendance`)}
+                          className="text-xs px-3.5 py-1.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 font-semibold shadow-xs hover:shadow-sm active:scale-95 transition-all shrink-0"
+                        >
+                          Điểm danh
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.className}</p>
-                    <p className="text-xs text-gray-500">
-                      {formatDateTime(s.scheduled_at)} · {s.duration_min} phút
-                    </p>
+                )
+              })}
+            </div>
+
+            {/* Desktop View: Row Layout */}
+            <div className="hidden sm:block divide-y divide-gray-100">
+              {sessions.map(s => {
+                const statusCfg = STATUS_LABELS[s.status] ?? STATUS_LABELS.scheduled
+                const hasTaken = s.attendanceCount > 0
+                return (
+                  <div key={s.id} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+                        <ClipboardList className="w-4.5 h-4.5 text-primary-700" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{s.className}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatDateTime(s.scheduled_at)} · {s.duration_min} phút
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusCfg.className}`}>
+                        {statusCfg.label}
+                      </span>
+                      {hasTaken ? (
+                        <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-lg">{s.attendanceCount} HV đã điểm danh ✓</span>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-medium">Chưa điểm danh</span>
+                      )}
+                      {s.status !== 'cancelled' && (
+                        <button
+                          onClick={() => navigate(`/coach/classes/${s.class_id}/sessions/${s.id}/attendance`)}
+                          className="text-xs px-3.5 py-1.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors font-semibold shadow-xs"
+                        >
+                          Điểm danh
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
-                      {statusCfg.label}
-                    </span>
-                    {hasTaken ? (
-                      <span className="text-xs text-green-600 font-medium">{s.attendanceCount} HV ✓</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">Chưa điểm</span>
-                    )}
-                    {s.status !== 'cancelled' && (
-                      <button
-                        onClick={() => navigate(`/coach/classes/${s.class_id}/sessions/${s.id}/attendance`)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-                      >
-                        Điểm danh
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

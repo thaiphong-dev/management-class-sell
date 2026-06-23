@@ -255,49 +255,101 @@ export default function CoachAttendanceSheetPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {students.map((s, idx) => (
-              <div key={s.studentId} className="flex items-center gap-3 p-4">
-                {/* Index + name */}
-                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-medium text-gray-600">{idx + 1}</span>
+            {/* Mobile View: Card Layout */}
+            <div className="block sm:hidden divide-y divide-gray-100">
+              {students.map((s, idx) => (
+                <div key={s.studentId} className="p-4 space-y-3 hover:bg-gray-50/55 transition-colors">
+                  {/* Top: Index + name + package */}
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-semibold text-gray-600">{idx + 1}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-900 break-words">{s.name}</p>
+                        {s.alertLevel === 'critical' && (
+                          <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Thẻ sắp hết" />
+                        )}
+                        {s.alertLevel === 'warning' && (
+                          <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" aria-label="Thẻ cần gia hạn" />
+                        )}
+                      </div>
+                      {s.packageType ? (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {s.packageType === 'session'
+                            ? `Còn ${s.sessionsRemaining ?? 0} buổi · HH: ${formatDate(s.expiresAt)}`
+                            : `Hết hạn: ${formatDate(s.expiresAt)}`
+                          }
+                        </p>
+                      ) : (
+                        <p className="text-xs text-red-500 mt-0.5 font-medium">Chưa có thẻ học</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Bottom: Buttons Row */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                    {STATUS_BUTTONS.map(btn => (
+                      <button
+                        key={btn.value}
+                        onClick={() => toggleStatus(s.studentId, btn.value)}
+                        className={`text-xs py-2 rounded-xl border text-center transition-all ${
+                          s.status === btn.value ? btn.activeClass : btn.className
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
-                    {s.alertLevel === 'critical' && (
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Thẻ sắp hết" />
-                    )}
-                    {s.alertLevel === 'warning' && (
-                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" aria-label="Thẻ cần gia hạn" />
+              ))}
+            </div>
+
+            {/* Desktop View: Row Layout */}
+            <div className="hidden sm:block divide-y divide-gray-100">
+              {students.map((s, idx) => (
+                <div key={s.studentId} className="flex items-center gap-3 p-4 hover:bg-gray-50/50 transition-colors">
+                  {/* Index + name */}
+                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-medium text-gray-600">{idx + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                      {s.alertLevel === 'critical' && (
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Thẻ sắp hết" />
+                      )}
+                      {s.alertLevel === 'warning' && (
+                        <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" aria-label="Thẻ cần gia hạn" />
+                      )}
+                    </div>
+                    {s.packageType ? (
+                      <p className="text-xs text-gray-400">
+                        {s.packageType === 'session'
+                          ? `Còn ${s.sessionsRemaining ?? 0} buổi · HH: ${formatDate(s.expiresAt)}`
+                          : `Hết hạn: ${formatDate(s.expiresAt)}`
+                        }
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400">Chưa có thẻ học</p>
                     )}
                   </div>
-                  {s.packageType ? (
-                    <p className="text-xs text-gray-400">
-                      {s.packageType === 'session'
-                        ? `Còn ${s.sessionsRemaining ?? 0} buổi · HH: ${formatDate(s.expiresAt)}`
-                        : `Hết hạn: ${formatDate(s.expiresAt)}`
-                      }
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Chưa có thẻ học</p>
-                  )}
+                  {/* Status toggle buttons */}
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    {STATUS_BUTTONS.map(btn => (
+                      <button
+                        key={btn.value}
+                        onClick={() => toggleStatus(s.studentId, btn.value)}
+                        className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                          s.status === btn.value ? btn.activeClass : btn.className
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {/* Status toggle buttons */}
-                <div className="flex gap-1.5 flex-shrink-0">
-                  {STATUS_BUTTONS.map(btn => (
-                    <button
-                      key={btn.value}
-                      onClick={() => toggleStatus(s.studentId, btn.value)}
-                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-                        s.status === btn.value ? btn.activeClass : btn.className
-                      }`}
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>

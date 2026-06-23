@@ -328,7 +328,7 @@ export default function ParentDashboardPage() {
               bgClass = "bg-amber-50 border-amber-200 text-amber-850"
               iconBg = "bg-amber-100 text-amber-600 animate-pulse"
               title = `Bé ${cp.childName} có thẻ học chờ kích hoạt`
-              desc = `Gói học ${cp.packageName} của bé ${cp.childName} đang chờ kích hoạt. Thẻ sẽ tự động kích hoạt khi điểm danh lần đầu hoặc kích hoạt bằng tay.`
+              desc = `Gói học ${cp.packageName} của bé ${cp.childName} đang chờ kích hoạt. Thẻ sẽ tự động kích hoạt khi điểm danh lần đầu hoặc liên hệ Admin để kích hoạt.`
               btnText = "Xem chi tiết"
               btnClass = "bg-amber-600 hover:bg-amber-700 border-amber-600"
             } else if (isCritical) {

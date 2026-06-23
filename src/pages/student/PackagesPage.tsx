@@ -463,49 +463,6 @@ export default function StudentPackagesPage({
     }
   };
 
-  const handleActivateCard = async (
-    pkgId: string,
-    validityDays: number = 30,
-  ) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn kích hoạt thẻ học này ngay bây giờ?",
-      )
-    )
-      return;
-    setIsLoading(true);
-    try {
-      const now = new Date();
-      const expiresAt = new Date(
-        now.getTime() + validityDays * 24 * 60 * 60 * 1000,
-      ).toISOString();
-
-      const { error } = await supabase
-        .from("student_packages")
-        .update({
-          status: "active",
-          activated_at: now.toISOString(),
-          expires_at: expiresAt,
-        } as never)
-        .eq("id", pkgId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Kích hoạt thành công",
-        description: "Thẻ học của bạn đã được kích hoạt thành công.",
-      });
-      await loadPageData();
-    } catch (err: any) {
-      toast({
-        title: "Lỗi kích hoạt",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -697,11 +654,6 @@ export default function StudentPackagesPage({
                 <ActivePackageCard key={card.id} card={card} />
               ))}
               {pendingCards.map((card) => {
-                // Find validity_days from availablePackages if any, or default to 30
-                const pkgInfo = availablePackages.find(
-                  (p) => p.name === card.packageName,
-                );
-                const validityDays = pkgInfo?.validity_days ?? 30;
                 return (
                   <div
                     key={card.id}
@@ -726,7 +678,7 @@ export default function StudentPackagesPage({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="bg-white/15 rounded-xl p-3">
                         <p className="text-xs text-white/70">Số buổi tập</p>
                         <p className="text-2xl font-bold">
@@ -741,18 +693,6 @@ export default function StudentPackagesPage({
                           Điểm danh lần đầu hoặc kích hoạt bởi Admin
                         </p>
                       </div>
-                    </div>
-
-                    <div className="flex justify-end font-sans">
-                      <Button
-                        disabled={isLoading}
-                        onClick={() =>
-                          handleActivateCard(card.id, validityDays)
-                        }
-                        className="bg-white text-amber-700 hover:bg-amber-50 rounded-xl text-xs font-bold px-4 h-9 shadow-sm"
-                      >
-                        Kích hoạt thẻ ngay
-                      </Button>
                     </div>
                   </div>
                 );
