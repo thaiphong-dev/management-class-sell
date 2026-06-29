@@ -21,6 +21,45 @@ interface ClassDetail {
   skill_level: 'beginner' | 'intermediate' | 'advanced' | 'kids' | 'all'
   facility_name?: string
   court_name?: string
+  schedule_days: string[]
+  schedule_time?: string
+  duration_min?: number
+}
+
+const DAY_LABELS: Record<string, string> = {
+  mon: "T2",
+  tue: "T3",
+  wed: "T4",
+  thu: "T5",
+  fri: "T6",
+  sat: "T7",
+  sun: "CN",
+}
+
+const SKILL_LABELS: Record<
+  string,
+  { label: string; className: string }
+> = {
+  beginner: {
+    label: "Cơ bản",
+    className: "bg-green-50 text-green-700 border-green-200",
+  },
+  intermediate: {
+    label: "Trung cấp",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  advanced: {
+    label: "Nâng cao",
+    className: "bg-red-50 text-red-700 border-red-200",
+  },
+  kids: {
+    label: "Trẻ em",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  all: {
+    label: "Mọi trình độ",
+    className: "bg-purple-50 text-purple-700 border-purple-200",
+  },
 }
 
 interface PackageDetail {
@@ -187,7 +226,7 @@ export default function RegisterCoursePage() {
         const { data, error } = await supabase
           .from('classes')
           .select(`
-            id, name, max_students, skill_level,
+            id, name, max_students, skill_level, schedule_days, schedule_time, duration_min,
             facilities(name), courts(name)
           `)
           .eq('status', 'active')
@@ -200,7 +239,10 @@ export default function RegisterCoursePage() {
           max_students: c.max_students || 15,
           skill_level: c.skill_level,
           facility_name: c.facilities?.name,
-          court_name: c.courts?.name
+          court_name: c.courts?.name,
+          schedule_days: c.schedule_days ?? [],
+          schedule_time: c.schedule_time,
+          duration_min: c.duration_min
         }))
 
         setClasses(formatted)
@@ -715,7 +757,7 @@ export default function RegisterCoursePage() {
                     <SelectContent>
                       {classes.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.name} {c.facility_name ? `(${c.facility_name})` : ''} - Trình độ: {c.skill_level === 'beginner' ? 'Cơ bản' : c.skill_level === 'intermediate' ? 'Trung cấp' : c.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}
+                          {c.name} {c.facility_name ? `(${c.facility_name})` : ''} ({c.schedule_days.map(d => DAY_LABELS[d] ?? d).join(', ')} | {c.schedule_time ? c.schedule_time.slice(0, 5) : '—'})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -761,13 +803,30 @@ export default function RegisterCoursePage() {
                             <h4 className="text-sm font-extrabold text-slate-800 leading-snug">{selectedClass.name}</h4>
                             <div className="mt-1.5 space-y-1 text-xs text-slate-500">
                               <p className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-400">Lịch tập:</span> 
+                                <span className="inline-flex gap-1 flex-wrap align-middle">
+                                  {selectedClass.schedule_days.map(d => (
+                                    <span key={d} className="px-1 py-0.2 bg-red-50 text-red-650 rounded font-extrabold text-[9px]">
+                                      {DAY_LABELS[d] ?? d}
+                                    </span>
+                                  ))}
+                                </span>
+                                {selectedClass.schedule_time && (
+                                  <span className="font-semibold text-slate-700 ml-1">
+                                    {selectedClass.schedule_time.slice(0, 5)} · {selectedClass.duration_min} phút
+                                  </span>
+                                )}
+                              </p>
+                              <p className="flex items-center gap-1">
                                 <span className="font-semibold text-slate-400">Sân tập:</span> 
                                 <span className="text-slate-700 font-medium">{selectedClass.facility_name || 'Đang cập nhật'} {selectedClass.court_name ? `(Sân ${selectedClass.court_name})` : ''}</span>
                               </p>
                               <p className="flex items-center gap-1">
                                 <span className="font-semibold text-slate-400">Trình độ:</span> 
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-650 text-[10px] font-bold border border-slate-200">
-                                  {selectedClass.skill_level === 'beginner' ? 'Cơ bản' : selectedClass.skill_level === 'intermediate' ? 'Trung cấp' : selectedClass.skill_level === 'advanced' ? 'Nâng cao' : 'Khác'}
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                  SKILL_LABELS[selectedClass.skill_level]?.className || 'bg-slate-100 text-slate-650 border-slate-200'
+                                }`}>
+                                  {SKILL_LABELS[selectedClass.skill_level]?.label || selectedClass.skill_level}
                                 </span>
                               </p>
                             </div>
@@ -809,6 +868,15 @@ export default function RegisterCoursePage() {
                         <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                         <div>
                           <span className="font-bold uppercase text-yellow-800">Thông báo test trình độ:</span> Học sinh đăng ký lớp trình độ Trung cấp/Nâng cao sẽ được kiểm tra trình độ tại buổi học đầu tiên tại lớp. Nếu học viên không đáp ứng đủ trình độ, huấn luyện viên sẽ trao đổi trực tiếp với phụ huynh để chuyển học viên vào lớp học có trình độ phù hợp hơn.
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedClass && (
+                      <div className="p-3 bg-blue-50/30 border border-blue-200 rounded-xl flex gap-2 text-[11px] text-blue-855 leading-relaxed font-semibold">
+                        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold uppercase text-blue-850">Lưu ý lịch tập lệch buổi:</span> Nếu bạn muốn ghép lịch tập lẻ khác với lịch cố định của lớp (ví dụ: tập T2 lớp này, T5 lớp khác), vui lòng cứ đăng ký khóa học trước, buổi học thực tế có thể liên hệ trực tiếp Admin/HLV để sắp xếp lịch tập phù hợp.
                         </div>
                       </div>
                     )}

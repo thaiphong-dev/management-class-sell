@@ -13,6 +13,7 @@ import {
   Loader2,
   Info,
   Download,
+  MapPin,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -83,6 +84,42 @@ const STATUS_CONFIG: Record<
   active: { label: "Đang dùng", className: "bg-green-100 text-green-700" },
   expired: { label: "Hết hạn", className: "bg-red-100 text-red-700" },
   depleted: { label: "Hết buổi", className: "bg-gray-100 text-gray-600" },
+};
+
+const DAY_LABELS: Record<string, string> = {
+  mon: "T2",
+  tue: "T3",
+  wed: "T4",
+  thu: "T5",
+  fri: "T6",
+  sat: "T7",
+  sun: "CN",
+};
+
+const SKILL_LABELS: Record<
+  string,
+  { label: string; className: string }
+> = {
+  beginner: {
+    label: "Cơ bản",
+    className: "bg-green-50 text-green-700 border-green-200",
+  },
+  intermediate: {
+    label: "Trung cấp",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  advanced: {
+    label: "Nâng cao",
+    className: "bg-red-50 text-red-700 border-red-200",
+  },
+  kids: {
+    label: "Trẻ em",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  all: {
+    label: "Mọi trình độ",
+    className: "bg-purple-50 text-purple-700 border-purple-200",
+  },
 };
 
 const handleDownloadQr = async (url: string, filename: string) => {
@@ -210,7 +247,14 @@ export default function StudentPackagesPage({
           .limit(1)
           .maybeSingle(),
         (supabase.from("classes") as any)
-          .select("id, name, skill_level")
+          .select(
+            `
+            id, name, skill_level, schedule_days, schedule_time, duration_min,
+            coaches(profiles(full_name)),
+            facilities(name),
+            courts(name)
+            `
+          )
           .eq("status", "active")
           .order("name"),
         (supabase.from("registrations") as any)
@@ -318,9 +362,27 @@ export default function StudentPackagesPage({
       }
 
       if (classesRes.data) {
-        setActiveClasses(classesRes.data);
-        if (classesRes.data.length > 0) {
-          setSelectedClassId(classesRes.data[0].id);
+        const formattedClasses = (classesRes.data as any[]).map((c) => {
+          const coachProfile = c.coaches?.profiles;
+          const coachName = Array.isArray(coachProfile)
+            ? coachProfile[0]?.full_name
+            : coachProfile?.full_name;
+
+          return {
+            id: c.id,
+            name: c.name,
+            skill_level: c.skill_level,
+            schedule_days: c.schedule_days ?? [],
+            schedule_time: c.schedule_time,
+            duration_min: c.duration_min,
+            coach_name: coachName ?? "Huấn luyện viên",
+            facility_name: c.facilities?.name ?? "Cơ sở",
+            court_name: c.courts?.name ?? "Sân tập",
+          };
+        });
+        setActiveClasses(formattedClasses);
+        if (formattedClasses.length > 0) {
+          setSelectedClassId(formattedClasses[0].id);
         }
       }
 
@@ -790,6 +852,75 @@ export default function StudentPackagesPage({
         </div>
       )}
 
+      {/* Lịch tập luyện các lớp */}
+      {!isLoading && activeClasses.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="w-4 h-4 text-primary-700" />
+            <h3 className="text-base font-semibold text-gray-800">
+              Lịch tập luyện các lớp
+            </h3>
+          </div>
+          <p className="text-xs text-gray-400">
+            Danh sách lớp đang hoạt động và lịch tập chi tiết (HLV, giờ tập và thứ tập).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {activeClasses.map((cls) => (
+              <div
+                key={cls.id}
+                className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm hover:border-primary-200 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-bold text-gray-955 text-sm truncate">
+                      {cls.name}
+                    </h4>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
+                        SKILL_LABELS[cls.skill_level]?.className || "bg-gray-50 text-gray-700 border-gray-200"
+                      }`}
+                    >
+                      {SKILL_LABELS[cls.skill_level]?.label || cls.skill_level}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+                      {cls.facility_name} (Sân {cls.court_name})
+                    </span>
+                    <span className="flex items-center gap-1 font-medium text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-205/50">
+                      HLV: {cls.coach_name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {cls.schedule_days.map((d: string) => (
+                      <span
+                        key={d}
+                        className="text-[9px] px-2 py-0.5 bg-primary-50 text-primary-600 rounded font-extrabold"
+                      >
+                        {DAY_LABELS[d] ?? d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex sm:flex-col items-center sm:items-end gap-2 flex-shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100">
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200/60">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                    {cls.schedule_time
+                      ? cls.schedule_time.slice(0, 5)
+                      : "—"}{" "}
+                    · {cls.duration_min} phút
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lịch sử đăng ký học */}
       <div>
         <h3 className="text-base font-semibold text-gray-800 mb-3">
@@ -978,62 +1109,121 @@ export default function StudentPackagesPage({
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPkgForBuy && (
-            <div className="space-y-4 py-3 text-sm">
-              <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 border border-gray-100">
-                <p className="text-xs text-gray-500 font-medium">
-                  Gói học lựa chọn
-                </p>
-                <div className="flex items-center justify-between">
-                  <p className="font-bold text-gray-800">
-                    {selectedPkgForBuy.name}
+          {selectedPkgForBuy && (() => {
+            const selectedClass = activeClasses.find((c) => c.id === selectedClassId);
+            return (
+              <div className="space-y-4 py-3 text-sm">
+                <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 border border-gray-100">
+                  <p className="text-xs text-gray-500 font-medium">
+                    Gói học lựa chọn
                   </p>
-                  <p className="font-extrabold text-primary-700">
-                    {formatCurrency(selectedPkgForBuy.price)}
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-gray-800">
+                      {selectedPkgForBuy.name}
+                    </p>
+                    <p className="font-extrabold text-primary-700">
+                      {formatCurrency(selectedPkgForBuy.price)}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Hiệu lực: {selectedPkgForBuy.validity_days} ngày
+                    {selectedPkgForBuy.sessions_count
+                      ? ` · Số buổi: ${selectedPkgForBuy.sessions_count}`
+                      : ""}
                   </p>
                 </div>
-                <p className="text-[11px] text-gray-400">
-                  Hiệu lực: {selectedPkgForBuy.validity_days} ngày
-                  {selectedPkgForBuy.sessions_count
-                    ? ` · Số buổi: ${selectedPkgForBuy.sessions_count}`
-                    : ""}
-                </p>
-              </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="class_select"
-                  className="text-xs font-bold text-gray-600"
-                >
-                  Lớp học đăng ký *
-                </Label>
-                <Select
-                  value={selectedClassId}
-                  onValueChange={setSelectedClassId}
-                >
-                  <SelectTrigger className="w-full bg-white border border-gray-200 rounded-xl text-xs font-semibold h-10">
-                    <SelectValue placeholder="-- Chọn lớp học --" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeClasses.map((cls) => (
-                      <SelectItem
-                        key={cls.id}
-                        value={cls.id}
-                        className="text-xs"
-                      >
-                        {cls.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {activeClasses.length === 0 && (
-                  <p className="text-[11px] text-red-500">
-                    Không tìm thấy lớp học hoạt động nào để chọn.
-                  </p>
-                )}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="class_select"
+                    className="text-xs font-bold text-gray-600"
+                  >
+                    Lớp học đăng ký *
+                  </Label>
+                  <Select
+                    value={selectedClassId}
+                    onValueChange={setSelectedClassId}
+                  >
+                    <SelectTrigger className="w-full bg-white border border-gray-200 rounded-xl text-xs font-semibold h-10">
+                      <SelectValue placeholder="-- Chọn lớp học --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeClasses.map((cls) => (
+                        <SelectItem
+                          key={cls.id}
+                          value={cls.id}
+                          className="text-xs"
+                        >
+                          {cls.name} (
+                          {cls.schedule_days.map((d: string) => DAY_LABELS[d] ?? d).join(", ")}{" "}
+                          | {cls.schedule_time ? cls.schedule_time.slice(0, 5) : "—"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {activeClasses.length === 0 && (
+                    <p className="text-[11px] text-red-500">
+                      Không tìm thấy lớp học hoạt động nào để chọn.
+                    </p>
+                  )}
+
+                  {/* Chi tiết lớp học preview */}
+                  {selectedClass && (
+                    <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl space-y-1.5 text-xs text-blue-900 mt-2">
+                      <p className="font-bold text-blue-955 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-blue-700" /> Chi tiết lớp học đã chọn:
+                      </p>
+                      <div className="space-y-1 text-[11px] text-blue-800">
+                        <p>
+                          <strong>Lịch tập:</strong>{" "}
+                          <span className="inline-flex gap-1 flex-wrap align-middle">
+                            {selectedClass.schedule_days.map((d: string) => (
+                              <span
+                                key={d}
+                                className="px-1 py-0.2 bg-blue-100 text-blue-855 rounded font-extrabold text-[9px]"
+                              >
+                                {DAY_LABELS[d] ?? d}
+                              </span>
+                            ))}
+                          </span>
+                          {" · "}
+                          <span className="font-semibold">
+                            {selectedClass.schedule_time ? selectedClass.schedule_time.slice(0, 5) : "—"} ({selectedClass.duration_min} phút)
+                          </span>
+                        </p>
+                        <p>
+                          <strong>Huấn luyện viên:</strong> {selectedClass.coach_name}
+                        </p>
+                        <p>
+                          <strong>Sân tập:</strong> {selectedClass.facility_name} (Sân {selectedClass.court_name})
+                        </p>
+                        <p>
+                          <strong>Trình độ:</strong>{" "}
+                          <span
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                              SKILL_LABELS[selectedClass.skill_level]?.className || "bg-gray-100 text-gray-700 border-gray-200"
+                            }`}
+                          >
+                            {SKILL_LABELS[selectedClass.skill_level]?.label || selectedClass.skill_level}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thông báo ghép lịch lệch buổi */}
+                  {selectedClass && (
+                    <div className="p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl flex gap-1.5 text-[10px] text-amber-850 leading-relaxed font-semibold mt-2">
+                      <Info className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-amber-900">Lịch tập lệch buổi:</span> Nếu bạn muốn ghép lịch tập lẻ khác với lịch cố định của lớp, vui lòng cứ đăng ký gói học trước, lịch tập thực tế có thể liên hệ Admin để được hỗ trợ sắp xếp.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <DialogFooter className="gap-2 sm:gap-0 border-t border-gray-50 pt-3 flex flex-row items-center justify-end">
             <Button
